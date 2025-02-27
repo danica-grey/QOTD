@@ -1,2 +1,1 @@
-﻿Initial commit
 Danica Grey
