@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">shit</string>
+    <string name="sup_bitch">sup bitch</string>
+    <string name="message_text">input: %s</string>
+</resources>
