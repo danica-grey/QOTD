@@ -1,0 +1,24 @@
+<resources>
+
+    <!-- Primary Color -->
+    <color name="colorPrimary">#6200EE</color> <!-- Purple color -->
+    <color name="colorPrimaryVariant">#3700B3</color> <!-- Darker purple variant -->
+    <color name="colorOnPrimary">#FFFFFF</color> <!-- White text/icons on primary color -->
+
+    <!-- Secondary Color -->
+    <color name="colorSecondary">#03DAC5</color> <!-- Teal color -->
+    <color name="colorSecondaryVariant">#018786</color> <!-- Darker teal variant -->
+    <color name="colorOnSecondary">#000000</color> <!-- Black text/icons on secondary color -->
+
+    <!-- Background Colors -->
+    <color name="colorBackground">#FFFFFF</color> <!-- White background color -->
+    <color name="colorStatusBar">#6200EE</color> <!-- Matching status bar color with primary color -->
+
+    <!-- Text Colors -->
+    <color name="colorTextPrimary">#000000</color> <!-- Black text color for primary text -->
+    <color name="colorTextSecondary">#616161</color> <!-- Dark gray text color for secondary text -->
+
+    <!-- Button Color -->
+    <color name="colorButton">#6200EE</color> <!-- Purple button color, matching the primary color -->
+
+</resources>

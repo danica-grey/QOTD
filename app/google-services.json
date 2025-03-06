@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "51622006417",
+    "project_id": "comp350start",
+    "storage_bucket": "comp350start.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51622006417:android:f00e5fce13a4dfa31b3930",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUaAAPoJsahTp7eUMN-ksBIsUtOnVMRHI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
