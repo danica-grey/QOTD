@@ -90,6 +90,24 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     var lastSubmittedAnswer by remember { mutableStateOf("") } // Store last submitted answer
     val context = LocalContext.current
 
+    var seenQuestions by remember { mutableStateOf(emptyList<String>()) }  // Track seen questions
+
+    fun fetchQuestion() {
+        FirebaseFirestore.getInstance().collection("questions")
+            .get()
+            .addOnSuccessListener { result ->
+                val questionsList = result.documents.filter { it.id !in seenQuestions }
+
+                if (questionsList.isNotEmpty()) {
+                    val randomQuestion = questionsList.random()
+                    question = randomQuestion.getString("Question") ?: "No question found"
+
+                    // Mark this question as seen
+                    seenQuestions = seenQuestions + randomQuestion.id
+                } else {
+                    question = "No more new questions available."
+                }
+
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance().collection("questions")
             .document("Question1")
@@ -100,6 +118,11 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             .addOnFailureListener {
                 question = "Error loading question"
             }
+    }
+
+
+    LaunchedEffect(Unit) {
+        fetchQuestion()
     }
 
     Column(
@@ -141,6 +164,14 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Button(onClick = { fetchQuestion() }) {
+            Text("Refresh Question")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (message.isNotEmpty()) {
+            Text(text = message, color = MaterialTheme.colorScheme.primary)
         // Display last submitted answer
         if (lastSubmittedAnswer.isNotEmpty()) {
             Text(
