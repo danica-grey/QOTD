@@ -33,6 +33,7 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
     var question by remember { mutableStateOf("Loading question...") }
     var userAnswer by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+
     var seenQuestions by remember { mutableStateOf(emptyList<String>()) }  // Track seen questions
 
     fun fetchQuestion() {
@@ -50,11 +51,20 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
                 } else {
                     question = "No more new questions available."
                 }
+
+    LaunchedEffect(Unit) {
+        FirebaseFirestore.getInstance().collection("questions")
+            //change to correct question ID can try to create something to randomize later
+            .document("Question1")
+            .get()
+            .addOnSuccessListener { document ->
+                question = document.getString("Question") ?: "No question found"
             }
             .addOnFailureListener {
                 question = "Error loading question"
             }
     }
+
 
     LaunchedEffect(Unit) {
         fetchQuestion()
@@ -88,6 +98,7 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
 
         Button(onClick = { fetchQuestion() }) {
             Text("Refresh Question")
