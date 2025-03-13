@@ -58,6 +58,8 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
                 } else {
                     question = "No more new questions available."
                 }
+            }
+    }
 
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance().collection("questions")
