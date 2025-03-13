@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -13,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import android.content.Intent
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +23,9 @@ import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
+
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,6 +60,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+
 fun Greeting() {
     Text(
         text = "What's goin' on?",
@@ -107,10 +114,13 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                 } else {
                     question = "No more new questions available."
                 }
+            }
+    }
 
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance().collection("questions")
-            .document("Question1")
+            //change to correct question ID can try to create something to randomize later
+            .document("Question001")
             .get()
             .addOnSuccessListener { document ->
                 question = document.getString("Question") ?: "No question found"
@@ -170,6 +180,15 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         Spacer(modifier = Modifier.height(16.dp))
 
+
+        Button(onClick = {
+            val intent = Intent(context, ReplaceQuestionActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("Click to Write Custom Question")
+        }
+
+
         if (message.isNotEmpty()) {
             Text(text = message, color = MaterialTheme.colorScheme.primary)
         // Display last submitted answer
@@ -182,7 +201,7 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     }
 }
 
-private fun submitAnswer(answer: String, callback: (String) -> Unit) {
+fun submitAnswer(answer: String, callback: (String) -> Unit) {
     if (answer.isBlank()) {
         callback("Answer cannot be empty.")
         return
