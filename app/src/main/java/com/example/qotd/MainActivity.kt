@@ -48,10 +48,17 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Top,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Greeting()
-                        FakeComments()
-                        Spacer(modifier = Modifier.weight(1f))
-                        QuestionAnswerScreen(scope, snackbarHostState)
+                        // Make this take up available space but allow scrolling
+                        Box(
+                            modifier = Modifier
+                                .weight(1f) // Ensures the content doesn't push FakeComments() off-screen
+                                .fillMaxWidth()
+                        ) {
+                            QuestionAnswerScreen(scope, snackbarHostState)
+                        }
+
+                        Greeting() // "Comments"
+                        FakeComments() // Now always visible below everything else
                     }
                 }
             }
@@ -63,8 +70,8 @@ class MainActivity : ComponentActivity() {
 
 fun Greeting() {
     Text(
-        text = "What's goin' on?",
-        fontSize = 32.sp
+        text = "Comments",
+        fontSize = 28.sp
     )
 }
 
@@ -94,7 +101,8 @@ fun FakeComments() {
 fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostState) {
     var question by remember { mutableStateOf("Loading question...") }
     var userAnswer by remember { mutableStateOf("") }
-    var lastSubmittedAnswer by remember { mutableStateOf("") } // Store last submitted answer
+    var lastSubmittedAnswer by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") } // Define message here
     val context = LocalContext.current
 
     var seenQuestions by remember { mutableStateOf(emptyList<String>()) }  // Track seen questions
@@ -116,20 +124,6 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                 }
             }
     }
-
-    LaunchedEffect(Unit) {
-        FirebaseFirestore.getInstance().collection("questions")
-            //change to correct question ID can try to create something to randomize later
-            .document("Question001")
-            .get()
-            .addOnSuccessListener { document ->
-                question = document.getString("Question") ?: "No question found"
-            }
-            .addOnFailureListener {
-                question = "Error loading question"
-            }
-    }
-
 
     LaunchedEffect(Unit) {
         fetchQuestion()
@@ -164,8 +158,9 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                     scope.launch {
                         snackbarHostState.showSnackbar(status)
                     }
-                    lastSubmittedAnswer = userAnswer // Store last submitted answer
-                    userAnswer = "" // Clear input after submission
+                    lastSubmittedAnswer = userAnswer
+                    userAnswer = ""
+                    message = status // Update the message
                 }
             }
         }) {
@@ -180,7 +175,6 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         Spacer(modifier = Modifier.height(16.dp))
 
-
         Button(onClick = {
             val intent = Intent(context, ReplaceQuestionActivity::class.java)
             context.startActivity(intent)
@@ -188,9 +182,11 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             Text("Click to Write Custom Question")
         }
 
-
+        // Display the message if it's not empty
         if (message.isNotEmpty()) {
             Text(text = message, color = MaterialTheme.colorScheme.primary)
+        }
+
         // Display last submitted answer
         if (lastSubmittedAnswer.isNotEmpty()) {
             Text(
