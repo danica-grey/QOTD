@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,9 +10,14 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.content.Intent
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.firestore.FirebaseFirestore
+
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,6 +36,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     var question by remember { mutableStateOf("Loading question...") }
     var userAnswer by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
@@ -37,7 +44,7 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance().collection("questions")
             //change to correct question ID can try to create something to randomize later
-            .document("Question1")
+            .document("Question001")
             .get()
             .addOnSuccessListener { document ->
                 question = document.getString("Question") ?: "No question found"
@@ -76,13 +83,22 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+
+        Button(onClick = {
+            val intent = Intent(context, ReplaceQuestionActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("Click to Write Custom Question")
+        }
+
+
         if (message.isNotEmpty()) {
             Text(text = message, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
 
-private fun submitAnswer(answer: String, callback: (String) -> Unit) {
+fun submitAnswer(answer: String, callback: (String) -> Unit) {
     if (answer.isBlank()) {
         callback("Answer cannot be empty.")
         return
