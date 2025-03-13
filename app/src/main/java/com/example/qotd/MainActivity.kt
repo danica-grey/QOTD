@@ -34,6 +34,24 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
     var userAnswer by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
 
+    var seenQuestions by remember { mutableStateOf(emptyList<String>()) }  // Track seen questions
+
+    fun fetchQuestion() {
+        FirebaseFirestore.getInstance().collection("questions")
+            .get()
+            .addOnSuccessListener { result ->
+                val questionsList = result.documents.filter { it.id !in seenQuestions }
+
+                if (questionsList.isNotEmpty()) {
+                    val randomQuestion = questionsList.random()
+                    question = randomQuestion.getString("Question") ?: "No question found"
+
+                    // Mark this question as seen
+                    seenQuestions = seenQuestions + randomQuestion.id
+                } else {
+                    question = "No more new questions available."
+                }
+
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance().collection("questions")
             //change to correct question ID can try to create something to randomize later
@@ -45,6 +63,11 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
             .addOnFailureListener {
                 question = "Error loading question"
             }
+    }
+
+
+    LaunchedEffect(Unit) {
+        fetchQuestion()
     }
 
     Column(
@@ -72,6 +95,13 @@ fun QuestionAnswerScreen(modifier: Modifier = Modifier) {
             }
         }) {
             Text("Submit")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+
+        Button(onClick = { fetchQuestion() }) {
+            Text("Refresh Question")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
