@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.content.Intent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,8 +68,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// fake comment text "Comments"
 @Composable
-
 fun Greeting() {
     Text(
         text = "Comments",
@@ -75,6 +77,7 @@ fun Greeting() {
     )
 }
 
+// fake comments, we can delete these later or now
 @Composable
 fun FakeComments() {
     var checked by remember { mutableStateOf(false) }
@@ -140,14 +143,16 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        BasicTextField(
+        OutlinedTextField(
             value = userAnswer,
             onValueChange = { userAnswer = it },
+            label = { Text("Type something...") },
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Submit Button
         Button(onClick = {
             if (userAnswer.isBlank()) {
                 scope.launch {
@@ -169,12 +174,9 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = { fetchQuestion() }) {
-            Text("Refresh Question")
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Button to open custom question activity
         Button(onClick = {
             val intent = Intent(context, ReplaceQuestionActivity::class.java)
             context.startActivity(intent)
@@ -193,6 +195,26 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                 text = "Your answer: $lastSubmittedAnswer",
                 style = MaterialTheme.typography.bodyLarge
             )
+        }
+
+        // Refresh Button (circular with swirl)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.TopEnd // Puts it in the top-right
+        ) {
+            FilledIconButton(
+                onClick = { fetchQuestion() },
+                modifier = Modifier.size(56.dp), // Adjust the size if needed
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Refresh Question",
+                    tint = MaterialTheme.colorScheme.onPrimary // Makes the swirl white
+                )
+            }
         }
     }
 }
