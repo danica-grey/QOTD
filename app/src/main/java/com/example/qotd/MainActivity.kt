@@ -105,7 +105,7 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     var question by remember { mutableStateOf("Loading question...") }
     var userAnswer by remember { mutableStateOf("") }
     var lastSubmittedAnswer by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") } // Define message here
+    var message by remember { mutableStateOf("") }
     val context = LocalContext.current
 
     var seenQuestions by remember { mutableStateOf(emptyList<String>()) }  // Track seen questions
@@ -139,7 +139,12 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = question, style = MaterialTheme.typography.headlineMedium)
+        // align question text to left
+        Text(
+            text = question,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.fillMaxWidth().align(Alignment.Start) // align to L
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -150,7 +155,7 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // Row for aligning the Submit button to the right
         Row(
@@ -176,9 +181,9 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                     }
                 },
                 modifier = Modifier
-                    .height(50.dp) // Increase button height
+                    .height(52.dp) // Increase button height
             ) {
-                Text("Submit", fontSize = 18.sp) // Increase font size
+                Text("Submit", fontSize = 20.sp) // Increase font size
             }
         }
 
@@ -238,7 +243,7 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             Icon(
                 imageVector = Icons.Filled.Add, // Plus sign icon
                 contentDescription = "Add Question",
-                modifier = Modifier.size(32.dp), // Increase size of the plus
+                modifier = Modifier.size(36.dp), // Increase size of the plus
                 tint = MaterialTheme.colorScheme.onPrimary
             )
         }

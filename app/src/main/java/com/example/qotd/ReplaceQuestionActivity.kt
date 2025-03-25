@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.qotd.ui.theme.QOTDTheme
 
 class ReplaceQuestionActivity : ComponentActivity() {
@@ -29,13 +30,12 @@ class ReplaceQuestionActivity : ComponentActivity() {
 
 @Composable
 fun ReplaceQuestionAnswerScreen(modifier: Modifier = Modifier) {
-    val userQuestionPrompt = "Please Write Your Question Below:"
-    var userQuestion by remember { mutableStateOf ("") }
-    val userAnswerPrompt = "Please Write Your Answer Below:"
+    val userQuestionPrompt = "Your Question:"
+    var userQuestion by remember { mutableStateOf("") }
+    val userAnswerPrompt = "Your Answer:"
     var userAnswer by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
-
-
+    var isSubmitted by remember { mutableStateOf(false) } // Track if the form has been submitted
 
     Column(
         modifier = modifier
@@ -45,35 +45,51 @@ fun ReplaceQuestionAnswerScreen(modifier: Modifier = Modifier) {
     ) {
         Text(text = userQuestionPrompt, style = MaterialTheme.typography.headlineMedium)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        BasicTextField(
+        OutlinedTextField(
             value = userQuestion,
             onValueChange = { userQuestion = it },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Let's hear it!") },
+            modifier = Modifier.fillMaxWidth(),
+            isError = isSubmitted && userQuestion.isBlank(), // Show error if submitted and blank
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(48.dp))
 
         Text(text = userAnswerPrompt, style = MaterialTheme.typography.headlineMedium)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        BasicTextField(
+        OutlinedTextField(
             value = userAnswer,
             onValueChange = { userAnswer = it },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Your turn!") },
+            modifier = Modifier.fillMaxWidth(),
+            isError = isSubmitted && userAnswer.isBlank(), // Show error if submitted and blank
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        Button(onClick = {
-            submitQuestionPlusAnswer(userQuestion, userAnswer) { status ->
-                message = status
-                userAnswer = ""
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Button(
+                onClick = {
+                    isSubmitted = true // Set flag to true when submitting
+                    submitQuestionPlusAnswer(userQuestion, userAnswer) { status ->
+                        message = status
+                        userAnswer = ""
+                    }
+                },
+                modifier = Modifier
+                    .height(52.dp)
+            ) {
+                Text("Submit", fontSize = 20.sp)
             }
-        }) {
-            Text("Submit")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -88,8 +104,7 @@ fun submitQuestionPlusAnswer(userQuestion: String, userAnswer: String, callback:
     if (userAnswer.isBlank() || userQuestion.isBlank()) {
         callback("Please write both your question and answer before clicking.")
         return
-    }
-    else {
+    } else {
         callback("Submission successful!")
         return
     }
