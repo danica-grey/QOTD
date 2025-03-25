@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.content.Intent
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,7 @@ import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,9 +57,10 @@ class MainActivity : ComponentActivity() {
                         ) {
                             QuestionAnswerScreen(scope, snackbarHostState)
                         }
-
+                        /* keeping code in case needed later but not calling
                         Greeting() // "Comments"
                         FakeComments() // Now always visible below everything else
+                        */
                     }
                 }
             }
@@ -74,7 +77,7 @@ fun Greeting() {
     )
 }
 
-// fake comments, we can delete these later or now
+// fake comments, we can delete these later once actual comments implemented
 @Composable
 fun FakeComments() {
     var checked by remember { mutableStateOf(false) }
@@ -149,37 +152,37 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Submit Button
-        Button(onClick = {
-            if (userAnswer.isBlank()) {
-                scope.launch {
-                    snackbarHostState.showSnackbar("Answer cannot be empty.")
-                }
-            } else {
-                submitAnswer(userAnswer) { status ->
-                    scope.launch {
-                        snackbarHostState.showSnackbar(status)
+        // Row for aligning the Submit button to the right
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End // Aligns the button to the right
+        ) {
+            // Submit Button with larger size
+            Button(
+                onClick = {
+                    if (userAnswer.isBlank()) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Answer cannot be empty.")
+                        }
+                    } else {
+                        submitAnswer(userAnswer) { status ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(status)
+                            }
+                            lastSubmittedAnswer = userAnswer
+                            userAnswer = ""
+                            message = status // Update the message
+                        }
                     }
-                    lastSubmittedAnswer = userAnswer
-                    userAnswer = ""
-                    message = status // Update the message
-                }
+                },
+                modifier = Modifier
+                    .height(50.dp) // Increase button height
+            ) {
+                Text("Submit", fontSize = 18.sp) // Increase font size
             }
-        }) {
-            Text("Submit")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Button to open custom question activity
-        Button(onClick = {
-            val intent = Intent(context, ReplaceQuestionActivity::class.java)
-            context.startActivity(intent)
-        }) {
-            Text("Click to Write Custom Question")
-        }
 
         // Display the message if it's not empty
         if (message.isNotEmpty()) {
@@ -193,25 +196,51 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                 style = MaterialTheme.typography.bodyLarge
             )
         }
+    }
 
-        // Refresh Button (circular with swirl)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            contentAlignment = Alignment.TopEnd // Puts it in the top-right
+    // The Refresh Button stays in the bottom-right corner
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        contentAlignment = Alignment.BottomEnd // Position the button at the bottom-right
+    ) {
+        FilledIconButton(
+            onClick = { fetchQuestion() },
+            modifier = Modifier.size(80.dp), // Set the size to 80.dp
+            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            FilledIconButton(
-                onClick = { fetchQuestion() },
-                modifier = Modifier.size(56.dp), // Adjust the size if needed
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Refresh,
-                    contentDescription = "Refresh Question",
-                    tint = MaterialTheme.colorScheme.onPrimary // Makes the swirl white
-                )
-            }
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Refresh Question",
+                modifier = Modifier.size(32.dp), // Increase size of the swirl
+                tint = MaterialTheme.colorScheme.onPrimary // Makes the swirl white
+            )
+        }
+    }
+
+    // The "+" Button stays in the bottom-left corner
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        contentAlignment = Alignment.BottomStart // Position the button at the bottom-left
+    ) {
+        FloatingActionButton(
+            onClick = {
+                val intent = Intent(context, ReplaceQuestionActivity::class.java)
+                context.startActivity(intent)
+            },
+            shape = RoundedCornerShape(16.dp), // Rounded square shape
+            modifier = Modifier.size(80.dp), // Set the size to match the refresh button size
+            containerColor = MaterialTheme.colorScheme.primary
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add, // Plus sign icon
+                contentDescription = "Add Question",
+                modifier = Modifier.size(32.dp), // Increase size of the plus
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
         }
     }
 }
