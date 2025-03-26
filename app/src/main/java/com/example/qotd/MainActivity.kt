@@ -194,6 +194,15 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             Text(text = message, color = MaterialTheme.colorScheme.primary)
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = {
+            val intent = Intent(context, LoginActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("LOGIN TEST")
+        }
+
         // Display last submitted answer
         if (lastSubmittedAnswer.isNotEmpty()) {
             Text(

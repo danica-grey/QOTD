@@ -24,6 +24,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".ReplaceQuestionActivity" />
+        <activity android:name=".LoginActivity"
+            tools:ignore="MissingClass" />
     </application>
 
 </manifest>
