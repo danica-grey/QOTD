@@ -26,7 +26,6 @@
         <activity android:name=".ReplaceQuestionActivity" />
         <activity android:name=".UserAnswersActivity" />
         <activity android:name=".LoginActivity" />
-
     </application>
 
 </manifest>

@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.google.firebase.auth.FirebaseAuth
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -172,7 +173,8 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                             snackbarHostState.showSnackbar("Answer cannot be empty.")
                         }
                     } else {
-                        submitAnswer(currentUserId, userAnswer) { status ->
+
+                        submitAnswer(userAnswer) { status ->
                             scope.launch {
                                 snackbarHostState.showSnackbar(status)
                             }
@@ -194,6 +196,16 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         // Display the message if it's not empty
         if (message.isNotEmpty()) {
             Text(text = message, color = MaterialTheme.colorScheme.primary)
+
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = {
+            val intent = Intent(context, LoginActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("LOGIN TEST")
         }
 
         // Display last submitted answer
@@ -215,6 +227,52 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             Text("View Other Answers")
         }
 
+    }
+
+    // The Refresh Button stays in the bottom-right corner
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        contentAlignment = Alignment.BottomEnd // Position the button at the bottom-right
+    ) {
+        FilledIconButton(
+            onClick = { fetchQuestion() },
+            modifier = Modifier.size(80.dp), // Set the size to 80.dp
+            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Refresh Question",
+                modifier = Modifier.size(32.dp), // Increase size of the swirl
+                tint = MaterialTheme.colorScheme.onPrimary // Makes the swirl white
+            )
+        }
+    }
+
+    // The "+" Button stays in the bottom-left corner
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        contentAlignment = Alignment.BottomStart // Position the button at the bottom-left
+    ) {
+        FloatingActionButton(
+            onClick = {
+                val intent = Intent(context, ReplaceQuestionActivity::class.java)
+                context.startActivity(intent)
+            },
+            shape = RoundedCornerShape(16.dp), // Rounded square shape
+            modifier = Modifier.size(80.dp), // Set the size to match the refresh button size
+            containerColor = MaterialTheme.colorScheme.primary
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add, // Plus sign icon
+                contentDescription = "Add Question",
+                modifier = Modifier.size(36.dp), // Increase size of the plus
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+        }
     }
 
     // The Refresh Button stays in the bottom-right corner
