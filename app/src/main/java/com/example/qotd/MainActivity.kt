@@ -174,7 +174,7 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                         }
                     } else {
 
-                        submitAnswer(userAnswer) { status ->
+                        submitAnswer(currentUserId, userAnswer) { status ->
                             scope.launch {
                                 snackbarHostState.showSnackbar(status)
                             }
