@@ -16,16 +16,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.content.Intent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
-
-
-
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,9 +57,10 @@ class MainActivity : ComponentActivity() {
                         ) {
                             QuestionAnswerScreen(scope, snackbarHostState)
                         }
-
+                        /* keeping code in case needed later but not calling
                         Greeting() // "Comments"
                         FakeComments() // Now always visible below everything else
+                        */
                     }
                 }
             }
@@ -66,8 +68,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// fake comment text "Comments"
 @Composable
-
 fun Greeting() {
     Text(
         text = "Comments",
@@ -75,6 +77,7 @@ fun Greeting() {
     )
 }
 
+// fake comments, we can delete these later once actual comments implemented
 @Composable
 fun FakeComments() {
     var checked by remember { mutableStateOf(false) }
@@ -102,8 +105,10 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     var question by remember { mutableStateOf("Loading question...") }
     var userAnswer by remember { mutableStateOf("") }
     var lastSubmittedAnswer by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") } // Define message here
+    var message by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid?:""
+
 
     var seenQuestions by remember { mutableStateOf(emptyList<String>()) }  // Track seen questions
 
@@ -136,51 +141,55 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = question, style = MaterialTheme.typography.headlineMedium)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        BasicTextField(
-            value = userAnswer,
-            onValueChange = { userAnswer = it },
-            modifier = Modifier.fillMaxWidth()
+        // align question text to left
+        Text(
+            text = question,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.fillMaxWidth().align(Alignment.Start) // align to L
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            if (userAnswer.isBlank()) {
-                scope.launch {
-                    snackbarHostState.showSnackbar("Answer cannot be empty.")
-                }
-            } else {
-                submitAnswer(userAnswer) { status ->
-                    scope.launch {
-                        snackbarHostState.showSnackbar(status)
+        OutlinedTextField(
+            value = userAnswer,
+            onValueChange = { userAnswer = it },
+            label = { Text("Type something...") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Row for aligning the Submit button to the right
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End // Aligns the button to the right
+        ) {
+            // Submit Button with larger size
+            Button(
+                onClick = {
+                    if (userAnswer.isBlank()) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Answer cannot be empty.")
+                        }
+                    } else {
+                        submitAnswer(currentUserId, userAnswer) { status ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(status)
+                            }
+                            lastSubmittedAnswer = userAnswer
+                            userAnswer = ""
+                            message = status // Update the message
+                        }
                     }
-                    lastSubmittedAnswer = userAnswer
-                    userAnswer = ""
-                    message = status // Update the message
-                }
+                },
+                modifier = Modifier
+                    .height(52.dp) // Increase button height
+            ) {
+                Text("Submit", fontSize = 20.sp) // Increase font size
             }
-        }) {
-            Text("Submit")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = { fetchQuestion() }) {
-            Text("Refresh Question")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            val intent = Intent(context, ReplaceQuestionActivity::class.java)
-            context.startActivity(intent)
-        }) {
-            Text("Click to Write Custom Question")
-        }
 
         // Display the message if it's not empty
         if (message.isNotEmpty()) {
@@ -194,18 +203,83 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                 style = MaterialTheme.typography.bodyLarge
             )
         }
+        Button(
+            onClick = {
+                val intent = Intent(context, UserAnswersActivity::class.java)
+                context.startActivity(intent)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp)
+        ) {
+            Text("View Other Answers")
+        }
+
+    }
+
+    // The Refresh Button stays in the bottom-right corner
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        contentAlignment = Alignment.BottomEnd // Position the button at the bottom-right
+    ) {
+        FilledIconButton(
+            onClick = { fetchQuestion() },
+            modifier = Modifier.size(80.dp), // Set the size to 80.dp
+            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Refresh Question",
+                modifier = Modifier.size(32.dp), // Increase size of the swirl
+                tint = MaterialTheme.colorScheme.onPrimary // Makes the swirl white
+            )
+        }
+    }
+
+    // The "+" Button stays in the bottom-left corner
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(12.dp),
+        contentAlignment = Alignment.BottomStart // Position the button at the bottom-left
+    ) {
+        FloatingActionButton(
+            onClick = {
+                val intent = Intent(context, ReplaceQuestionActivity::class.java)
+                context.startActivity(intent)
+            },
+            shape = RoundedCornerShape(16.dp), // Rounded square shape
+            modifier = Modifier.size(80.dp), // Set the size to match the refresh button size
+            containerColor = MaterialTheme.colorScheme.primary
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add, // Plus sign icon
+                contentDescription = "Add Question",
+                modifier = Modifier.size(36.dp), // Increase size of the plus
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+        }
     }
 }
 
-fun submitAnswer(answer: String, callback: (String) -> Unit) {
+fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
     if (answer.isBlank()) {
         callback("Answer cannot be empty.")
         return
     }
-
-    FirebaseFirestore.getInstance().collection("userAnswers").add(
-        hashMapOf("answer" to answer)
-    ).addOnSuccessListener {
+    val answerData = hashMapOf(
+        "userId" to userId,
+        "displayName" to userId,
+        "answer" to answer,
+        "likes" to emptyList<String>(),
+        "comments" to emptyList<Map<String, Any>>(),
+        "questionDate" to java.time.LocalDate.now().toString()
+    )
+    FirebaseFirestore.getInstance().collection("dailyAnswer").add(
+        answerData)
+    .addOnSuccessListener {
         callback("Answer submitted.")
     }.addOnFailureListener {
         callback("Failed to submit answer.")
