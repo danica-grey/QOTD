@@ -1,25 +1,20 @@
 package com.example.qotd
 
-import android.content.Context
+import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import android.content.Intent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.sp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.firestore.FirebaseFirestore
@@ -27,7 +22,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.google.firebase.auth.FirebaseAuth
-
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,54 +46,17 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Top,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Make this take up available space but allow scrolling
                         Box(
                             modifier = Modifier
-                                .weight(1f) // Ensures the content doesn't push FakeComments() off-screen
+                                .weight(1f)
                                 .fillMaxWidth()
                         ) {
                             QuestionAnswerScreen(scope, snackbarHostState)
                         }
-                        /* keeping code in case needed later but not calling
-                        Greeting() // "Comments"
-                        FakeComments() // Now always visible below everything else
-                        */
                     }
                 }
             }
         }
-    }
-}
-
-// fake comment text "Comments"
-@Composable
-fun Greeting() {
-    Text(
-        text = "Comments",
-        fontSize = 28.sp
-    )
-}
-
-// fake comments, we can delete these later once actual comments implemented
-@Composable
-fun FakeComments() {
-    var checked by remember { mutableStateOf(false) }
-    val imageId = if (checked) R.drawable.lmao else R.drawable.white
-
-    Column(
-        modifier = Modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Switch(
-            checked = checked,
-            onCheckedChange = { checked = it }
-        )
-
-        Image(
-            painter = painterResource(imageId),
-            modifier = Modifier.fillMaxWidth(),
-            contentDescription = null
-        )
     }
 }
 
@@ -108,219 +67,188 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     var lastSubmittedAnswer by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     val context = LocalContext.current
-    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid?:""
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
+    var seenQuestions by remember { mutableStateOf(emptyList<String>()) }
 
-    var seenQuestions by remember { mutableStateOf(emptyList<String>()) }  // Track seen questions
+    // Function to fetch the daily question
+    fun fetchQuestionOfTheDay() {
+        val db = FirebaseFirestore.getInstance()
+        val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val dailyQuestionRef = db.collection("dailyQuestions").document(todayDate)
 
-    fun fetchQuestion() {
-        FirebaseFirestore.getInstance().collection("questions")
-            .get()
-            .addOnSuccessListener { result ->
-                val questionsList = result.documents.filter { it.id !in seenQuestions }
+        dailyQuestionRef.get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                val qotd = document.getString("question") ?: "Error loading question."
+                question = qotd
+                seenQuestions = seenQuestions + qotd
+            } else {
+                db.collection("questions").get().addOnSuccessListener { result ->
+                    val questionsList = result.documents.mapNotNull { it.getString("Question") }
+                    if (questionsList.isNotEmpty()) {
+                        val randomQuestion = questionsList.random()
+                        dailyQuestionRef.set(mapOf("question" to randomQuestion))
 
-                if (questionsList.isNotEmpty()) {
-                    val randomQuestion = questionsList.random()
-                    question = randomQuestion.getString("Question") ?: "No question found"
-
-                    // Mark this question as seen
-                    seenQuestions = seenQuestions + randomQuestion.id
-                } else {
-                    question = "No more new questions available."
+                        question = randomQuestion
+                        seenQuestions = seenQuestions + randomQuestion
+                    } else {
+                        question = "No questions available."
+                    }
                 }
             }
+        }.addOnFailureListener {
+            question = "Failed to load question."
+        }
     }
 
+    // Fetch question when the screen is first composed
     LaunchedEffect(Unit) {
-        fetchQuestion()
+        fetchQuestionOfTheDay()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        // align question text to left
-        Text(
-            text = question,
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.fillMaxWidth().align(Alignment.Start) // align to L
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = userAnswer,
-            onValueChange = { userAnswer = it },
-            label = { Text("Type something...") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Row for aligning the Submit button to the right
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End // Aligns the button to the right
-        ) {
-            // Submit Button with larger size
-            Button(
-                onClick = {
-                    if (userAnswer.isBlank()) {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Answer cannot be empty.")
-                        }
-                    } else {
-
-                        submitAnswer(currentUserId, userAnswer) { status ->
-                            scope.launch {
-                                snackbarHostState.showSnackbar(status)
-                            }
-                            lastSubmittedAnswer = userAnswer
-                            userAnswer = ""
-                            message = status // Update the message
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .height(52.dp) // Increase button height
-            ) {
-                Text("Submit", fontSize = 20.sp) // Increase font size
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Display the message if it's not empty
-        if (message.isNotEmpty()) {
-            Text(text = message, color = MaterialTheme.colorScheme.primary)
-
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Button(onClick = {
-            val intent = Intent(context, LoginActivity::class.java)
-            context.startActivity(intent)
-        }) {
-            Text("LOGIN TEST")
-        }
-
-        // Display last submitted answer
-        if (lastSubmittedAnswer.isNotEmpty()) {
-            Text(
-                text = "Your answer: $lastSubmittedAnswer",
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
+        // Login Button at the top-left corner
         Button(
             onClick = {
-                val intent = Intent(context, UserAnswersActivity::class.java)
+                val intent = Intent(context, LoginActivity::class.java)
                 context.startActivity(intent)
             },
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp)
+                .align(Alignment.TopStart) // Align to the top-left
+                .padding(top = 16.dp, start = 16.dp) // Add some padding to the top and left
         ) {
-            Text("View Other Answers")
+            Text("Login")
         }
 
-    }
-
-    // The Refresh Button stays in the bottom-right corner
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        contentAlignment = Alignment.BottomEnd // Position the button at the bottom-right
-    ) {
-        FilledIconButton(
-            onClick = { fetchQuestion() },
-            modifier = Modifier.size(80.dp), // Set the size to 80.dp
-            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
+        // Main content (QOTD, answer input, etc.)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,  // Vertically center the content
+            horizontalAlignment = Alignment.CenterHorizontally  // Horizontally center the content
         ) {
-            Icon(
-                imageVector = Icons.Filled.Refresh,
-                contentDescription = "Refresh Question",
-                modifier = Modifier.size(32.dp), // Increase size of the swirl
-                tint = MaterialTheme.colorScheme.onPrimary // Makes the swirl white
+            // QOTD Text
+            Text(
+                text = question,
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.fillMaxWidth().align(Alignment.Start)
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Text input box for answer
+            OutlinedTextField(
+                value = userAnswer,
+                onValueChange = { userAnswer = it },
+                label = { Text("Type something...") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Submit Button aligned to the right
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End  // Align the submit button to the right
+            ) {
+                Button(
+                    onClick = {
+                        if (userAnswer.isBlank()) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Answer cannot be empty.")
+                            }
+                        } else {
+                            submitAnswer(currentUserId, userAnswer) { status ->
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(status)
+                                }
+                                lastSubmittedAnswer = userAnswer
+                                userAnswer = ""
+                                message = status
+
+                                // Navigate to the answers screen after submission
+                                val intent = Intent(context, UserAnswersActivity::class.java)
+                                context.startActivity(intent)
+                            }
+                        }
+                    },
+                    modifier = Modifier.height(52.dp)
+                ) {
+                    Text("Submit", fontSize = 20.sp)
+                }
+            }
         }
-    }
 
-    // The "+" Button stays in the bottom-left corner
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        contentAlignment = Alignment.BottomStart // Position the button at the bottom-left
-    ) {
-        FloatingActionButton(
-            onClick = {
-                val intent = Intent(context, ReplaceQuestionActivity::class.java)
-                context.startActivity(intent)
-            },
-            shape = RoundedCornerShape(16.dp), // Rounded square shape
-            modifier = Modifier.size(80.dp), // Set the size to match the refresh button size
-            containerColor = MaterialTheme.colorScheme.primary
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Add, // Plus sign icon
-                contentDescription = "Add Question",
-                modifier = Modifier.size(36.dp), // Increase size of the plus
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
+        // Fetch random question for refresh button
+        fun fetchQuestion() {
+            FirebaseFirestore.getInstance().collection("questions")
+                .get()
+                .addOnSuccessListener { result ->
+                    val questionsList = result.documents.filter { it.id !in seenQuestions }
+
+                    if (questionsList.isNotEmpty()) {
+                        val randomQuestion = questionsList.random()
+                        question = randomQuestion.getString("Question") ?: "No question found"
+
+                        // Mark this question as seen
+                        seenQuestions = seenQuestions + randomQuestion.id
+                    } else {
+                        question = "No more new questions available."
+                    }
+                }
         }
-    }
 
-    // The Refresh Button stays in the bottom-right corner
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        contentAlignment = Alignment.BottomEnd // Position the button at the bottom-right
-    ) {
-        FilledIconButton(
-            onClick = { fetchQuestion() },
-            modifier = Modifier.size(80.dp), // Set the size to 80.dp
-            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
+        // Refresh button
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            contentAlignment = Alignment.BottomEnd
         ) {
-            Icon(
-                imageVector = Icons.Filled.Refresh,
-                contentDescription = "Refresh Question",
-                modifier = Modifier.size(32.dp), // Increase size of the swirl
-                tint = MaterialTheme.colorScheme.onPrimary // Makes the swirl white
-            )
+            FilledIconButton(
+                onClick = { fetchQuestion() },
+                modifier = Modifier.size(80.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Refresh Question",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
-    }
 
-    // The "+" Button stays in the bottom-left corner
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        contentAlignment = Alignment.BottomStart // Position the button at the bottom-left
-    ) {
-        FloatingActionButton(
-            onClick = {
-                val intent = Intent(context, ReplaceQuestionActivity::class.java)
-                context.startActivity(intent)
-            },
-            shape = RoundedCornerShape(16.dp), // Rounded square shape
-            modifier = Modifier.size(80.dp), // Set the size to match the refresh button size
-            containerColor = MaterialTheme.colorScheme.primary
+        // Create new question button
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            contentAlignment = Alignment.BottomStart
         ) {
-            Icon(
-                imageVector = Icons.Filled.Add, // Plus sign icon
-                contentDescription = "Add Question",
-                modifier = Modifier.size(36.dp), // Increase size of the plus
-                tint = MaterialTheme.colorScheme.onPrimary
-            )
+            FloatingActionButton(
+                onClick = {
+                    val intent = Intent(context, ReplaceQuestionActivity::class.java)
+                    context.startActivity(intent)
+                },
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.size(80.dp),
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = "Add Question",
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
     }
 }
+
 
 fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
     if (answer.isBlank()) {
@@ -335,11 +263,11 @@ fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
         "comments" to emptyList<Map<String, Any>>(),
         "questionDate" to java.time.LocalDate.now().toString()
     )
-    FirebaseFirestore.getInstance().collection("dailyAnswer").add(
-        answerData)
-    .addOnSuccessListener {
-        callback("Answer submitted.")
-    }.addOnFailureListener {
-        callback("Failed to submit answer.")
-    }
+    FirebaseFirestore.getInstance().collection("dailyAnswer").add(answerData)
+        .addOnSuccessListener {
+            callback("Answer submitted.")
+        }
+        .addOnFailureListener {
+            callback("Failed to submit answer.")
+        }
 }
