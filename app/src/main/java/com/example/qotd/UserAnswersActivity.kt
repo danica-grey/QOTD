@@ -1,8 +1,8 @@
 package com.example.qotd
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -21,12 +21,12 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-
 class UserAnswersActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val questionDate = java.time.LocalDate.now().toString()
+        val questionDate = LocalDate.now() // Internal date format for Firebase (yyyy-MM-dd)
+        val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) // Display format (March 26, 2025)
 
         setContent {
             QOTDTheme {
@@ -37,7 +37,7 @@ class UserAnswersActivity : ComponentActivity() {
                             .padding(innerPadding),
                         verticalArrangement = Arrangement.Top
                     ) {
-                        UserAnswersScreen(questionDate)
+                        UserAnswersScreen(questionDate, displayDate) // Pass both dates
                     }
                 }
             }
@@ -46,14 +46,23 @@ class UserAnswersActivity : ComponentActivity() {
 }
 
 @Composable
-fun UserAnswersScreen(questionDate: String) {
+fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
     val firestore = FirebaseFirestore.getInstance()
     var answers by remember { mutableStateOf<List<Pair<String, Map<String, Any>>>>(emptyList()) }
+    var questionOfTheDay by remember { mutableStateOf("Loading question...") }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
 
+    // Fetch the question of the day
     LaunchedEffect(questionDate) {
+        firestore.collection("dailyQuestions")
+            .document(questionDate.toString()) // Use the internal date format for Firebase
+            .get()
+            .addOnSuccessListener { document ->
+                questionOfTheDay = document.getString("question") ?: "No question available for today."
+            }
+
         firestore.collection("dailyAnswer")
-            .whereEqualTo("questionDate", questionDate)
+            .whereEqualTo("questionDate", questionDate.toString()) // Use the internal date format for Firebase
             .addSnapshotListener { snapshot, _ ->
                 snapshot?.let {
                     answers = it.documents.mapNotNull { doc ->
@@ -65,8 +74,14 @@ fun UserAnswersScreen(questionDate: String) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Answers for $questionDate", style = MaterialTheme.typography.headlineMedium)
+        // Display the formatted date and question of the day at the top
+        Text(displayDate, style = MaterialTheme.typography.bodyLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Display the answers
         LazyColumn {
             items(answers.size) { index ->
                 val (answerId, answer) = answers[index]
@@ -166,7 +181,6 @@ fun addComment(answerId: String, commentText: String) {
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
     val currentTime = LocalDateTime.now().format(formatter)
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
-
 
     val newComment = hashMapOf(
         "userId" to currentUserId,
