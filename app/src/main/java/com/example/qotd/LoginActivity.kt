@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,6 +14,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
+import androidx.compose.ui.platform.LocalContext
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +37,22 @@ fun LoginScreen(modifier: Modifier) {
     var password by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
     val auth = FirebaseAuth.getInstance()
+    val context = LocalContext.current
+
+    // Login button action
+    val loginAction = {
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    message = "Login Successful!"
+                    // Navigate to MainActivity after successful login
+                    val intent = Intent(context, MainActivity::class.java)
+                    context.startActivity(intent)
+                } else {
+                    message = task.exception?.message ?: "Login Failed"
+                }
+            }
+    }
 
     Column(
         modifier = Modifier
@@ -42,7 +60,7 @@ fun LoginScreen(modifier: Modifier) {
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
-    ){
+    ) {
         TextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
         Spacer(modifier = Modifier.height(8.dp))
         TextField(
@@ -53,16 +71,7 @@ fun LoginScreen(modifier: Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        message = "Login Successful!"
-                    } else {
-                        message = task.exception?.message ?: "Login Failed"
-                    }
-                }
-        }) {
+        Button(onClick = { loginAction() }) {
             Text("Login")
         }
 
