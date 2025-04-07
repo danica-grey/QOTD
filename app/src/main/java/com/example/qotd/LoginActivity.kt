@@ -24,7 +24,7 @@ class LoginActivity : ComponentActivity() {
         setContent {
             QOTDTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    LoginScreen(modifier = Modifier.padding(innerPadding))
+                    LoginScreen(modifier = Modifier.padding(innerPadding), activity = this)
                 }
             }
         }
@@ -32,7 +32,7 @@ class LoginActivity : ComponentActivity() {
 }
 
 @Composable
-fun LoginScreen(modifier: Modifier) {
+fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
@@ -45,9 +45,9 @@ fun LoginScreen(modifier: Modifier) {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     message = "Login Successful!"
-                    // Navigate to MainActivity after successful login
                     val intent = Intent(context, MainActivity::class.java)
                     context.startActivity(intent)
+                    activity.finish() // Prevent back navigation to Login screen
                 } else {
                     message = task.exception?.message ?: "Login Failed"
                 }
@@ -55,7 +55,7 @@ fun LoginScreen(modifier: Modifier) {
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
