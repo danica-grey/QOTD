@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Check if the user has already answered the QOTD today
+    // Function to check if the user has already answered the QOTD today
     private fun checkIfAnsweredToday(userId: String) {
         if (userId.isNotEmpty()) {
             val db = FirebaseFirestore.getInstance()
@@ -94,23 +94,29 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val dailyQuestionRef = db.collection("dailyQuestions").document(todayDate)
 
+        // Tries to get today's question from Firestore
         dailyQuestionRef.get().addOnSuccessListener { document ->
+            // If it exists, show it
             if (document.exists()) {
                 val qotd = document.getString("question") ?: "Error loading question."
                 question = qotd
+            // If not:
             } else {
                 db.collection("questions").get().addOnSuccessListener { result ->
                     val questionsList = result.documents.mapNotNull { it.getString("Question") }
                     if (questionsList.isNotEmpty()) {
+                        // Pick a random question and save it as today's question
                         val randomQuestion = questionsList.random()
                         dailyQuestionRef.set(mapOf("question" to randomQuestion))
 
+                        // then display it
                         question = randomQuestion
                     } else {
                         question = "No questions available."
                     }
                 }
             }
+        // If the Firestore read fails (network issue, permission issue, etc.):
         }.addOnFailureListener {
             question = "Failed to load question."
         }
@@ -198,7 +204,6 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     }
 }
 
-// Move the submitAnswer function outside of the composable to resolve scoping issues
 fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
     if (answer.isBlank()) {
         callback("Answer cannot be empty.")
@@ -217,7 +222,7 @@ fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
     FirebaseFirestore.getInstance().collection("dailyAnswer").add(answerData)
         .addOnSuccessListener {
             callback("Answer submitted.")
-            markAnsweredToday(userId)  // Mark the user as answered for today
+            markAnsweredToday(userId)
         }
         .addOnFailureListener {
             callback("Failed to submit answer.")

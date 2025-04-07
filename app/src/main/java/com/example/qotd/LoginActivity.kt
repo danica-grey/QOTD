@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.firestore.FirebaseFirestore
+import java.time.LocalDate
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +40,7 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
     var message by remember { mutableStateOf("") }
     val auth = FirebaseAuth.getInstance()
     val context = LocalContext.current
+    val firestore = FirebaseFirestore.getInstance()
 
     // Login button action
     val loginAction = {
@@ -45,9 +48,31 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     message = "Login Successful!"
-                    val intent = Intent(context, MainActivity::class.java)
-                    context.startActivity(intent)
-                    activity.finish() // Prevent back navigation to Login screen
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+                    if (userId != null) {
+                        val questionDate = LocalDate.now().toString() // Today's date in format yyyy-MM-dd
+
+                        firestore.collection("dailyAnswer")
+                            .whereEqualTo("userId", userId)
+                            .whereEqualTo("questionDate", questionDate) // Check if the user has answered today
+                            .get()
+                            .addOnSuccessListener { snapshot ->
+                                if (snapshot.isEmpty) {
+                                    // User hasn't answered, go to QOTD screen
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                } else {
+                                    // User has answered, go to Answers screen
+                                    val intent = Intent(context, UserAnswersActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                activity.finish() // Prevent back navigation to Login screen
+                            }
+                            .addOnFailureListener {
+                                message = "Failed to check QOTD status"
+                            }
+                    }
                 } else {
                     message = task.exception?.message ?: "Login Failed"
                 }
@@ -96,3 +121,4 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
         }
     }
 }
+
