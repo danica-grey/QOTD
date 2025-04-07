@@ -12,20 +12,30 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QOTD"
         tools:targetApi="31">
+
+        <!-- LoginActivity as the first screen -->
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.QOTD">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- MainActivity (QOTD screen) -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.QOTD">
+        </activity>
+
         <activity android:name=".ReplaceQuestionActivity" />
         <activity android:name=".UserAnswersActivity" />
-        <activity android:name=".LoginActivity" />
+
     </application>
 
 </manifest>
