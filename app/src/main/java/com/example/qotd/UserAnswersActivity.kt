@@ -259,7 +259,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                                 },
                                 modifier = Modifier.padding(top = 8.dp)
                             ) {
-                                Text("Post Comment")
+                                Text("Reply")
                             }
                         }
                     }
