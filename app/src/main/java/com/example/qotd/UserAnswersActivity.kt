@@ -20,10 +20,21 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
 
 class UserAnswersActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check if the user came from the QOTD screen
+        val isComingFromQOTD = intent.getBooleanExtra("isComingFromQOTD", false)
+
+        // Disable back button if coming from QOTD screen
+        if (isComingFromQOTD) {
+            onBackPressedDispatcher.addCallback(this) {
+            }
+        }
 
         val questionDate = LocalDate.now() // Internal date format for Firebase (yyyy-MM-dd)
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) // Display format (March 26, 2025)
