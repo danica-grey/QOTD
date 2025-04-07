@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,31 +18,81 @@ import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.filled.ExitToApp // Add this import for logout icon
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.ui.text.font.FontWeight
 
 class UserAnswersActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check if the user came from the QOTD screen
+        val isComingFromQOTD = intent.getBooleanExtra("isComingFromQOTD", false)
+
+        // Disable back button if coming from QOTD screen
+        if (isComingFromQOTD) {
+            onBackPressedDispatcher.addCallback(this) {
+            }
+        }
 
         val questionDate = LocalDate.now() // Internal date format for Firebase (yyyy-MM-dd)
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) // Display format (March 26, 2025)
 
         setContent {
             QOTDTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = displayDate,
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            IconButton(onClick = { logoutAndNavigate() }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                    contentDescription = "Logout"
+                                )
+                            }
+                        }
+                    }
+                ) { innerPadding ->
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
                         verticalArrangement = Arrangement.Top
                     ) {
-                        UserAnswersScreen(questionDate, displayDate) // Pass both dates
+                        UserAnswersScreen(questionDate, displayDate)
                     }
                 }
             }
         }
+    }
+
+    // Function to log out and navigate to the login screen
+    private fun logoutAndNavigate() {
+        // Sign out the user
+        FirebaseAuth.getInstance().signOut()
+
+        // Navigate to the login screen
+        val intent = Intent(this, LoginActivity::class.java)
+        startActivity(intent)
+        finish() // Close the current activity to prevent returning after logout
     }
 }
 
@@ -68,15 +119,29 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                     answers = it.documents.mapNotNull { doc ->
                         val data = doc.data
                         if (data != null) Pair(doc.id, data) else null
+                    }.let { list ->
+                        // Separate the current user's answer from others and sort the rest by timestamp
+                        val (userAnswers, otherAnswers) = list.partition { it.second["userId"] == currentUserId }
+
+                        val sortedOthers = otherAnswers.sortedByDescending {
+                            val timeStr = it.second["timestamp"] as? String
+                            try {
+                                LocalDateTime.parse(timeStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                            } catch (e: Exception) {
+                                LocalDateTime.MIN
+                            }
+                        }
+
+                        // Combine the user's answer first, followed by the sorted other answers
+                        userAnswers + sortedOthers
                     }
                 }
             }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // Display the formatted date and question of the day at the top
-        Text(displayDate, style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(8.dp))
+        // Display the question of the day
+
         Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -94,29 +159,76 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                 var showComments by remember { mutableStateOf(false) }
                 var newComment by remember { mutableStateOf("") }
 
+                // Calculate the comment button text
+                val replyText = when (commentsList.size) {
+                    0 -> "Reply"
+                    1 -> "1 Reply"
+                    else -> "${commentsList.size} Replies"
+                }
+
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(8.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(answerText, style = MaterialTheme.typography.bodyLarge)
+
+                        // Display "Your Answer:" in bold and the answer text in normal style
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // "Your Answer:" text
+                            if (answer["userId"] == currentUserId) {
+                                Text(
+                                    text = "Your Answer:",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+
+                            // The actual answer text
+                            Text(
+                                text = answerText,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(top = 5.dp) // Add some space between the label and the answer
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Heart icon and like count
                             IconButton(onClick = { likeAnswer(answerId, currentUserId) }) {
                                 Icon(
                                     imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Like"
+                                    contentDescription = "Like",
+                                    tint = MaterialTheme.colorScheme.primary // Set color to blue
                                 )
                             }
-                            Text("${likesList.size} Likes")
+                            Text(
+                                "${likesList.size} Likes",
+                                color = MaterialTheme.colorScheme.primary, // Set the likes text to blue
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            )
 
                             Spacer(modifier = Modifier.width(16.dp))
 
-                            Button(onClick = { showComments = !showComments }) {
-                                Text(if (showComments) "Hide Comments" else "Show Comments")
+                            // Move the dropdown icon to the left of the "Reply" text
+                            if (commentsList.isNotEmpty()) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown, // Dropdown symbol
+                                    contentDescription = "Dropdown",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                             }
+
+                            // Display the "Replies" text or "Reply" based on comment count
+                            Text(
+                                text = replyText,
+                                color = MaterialTheme.colorScheme.primary, // Set reply text to blue
+                                modifier = Modifier
+                                    .clickable { showComments = !showComments }
+                                    .padding(4.dp),
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            )
                         }
 
                         if (showComments) {
@@ -147,7 +259,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                                 },
                                 modifier = Modifier.padding(top = 8.dp)
                             ) {
-                                Text("Post Comment")
+                                Text("Reply")
                             }
                         }
                     }
