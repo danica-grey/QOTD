@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
+import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,9 +46,25 @@ fun LoginScreen(modifier: Modifier) {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     message = "Login Successful!"
-                    // Navigate to MainActivity after successful login
-                    val intent = Intent(context, MainActivity::class.java)
-                    context.startActivity(intent)
+                    val userId = auth.currentUser?.uid ?: ""
+                    FirebaseFirestore.getInstance()
+                        .collection("users")
+                        .document(userId)
+                        .get()
+                        .addOnSuccessListener { document ->
+                            if (document.exists() && document.getString("username") != null) {
+                                // Has username - go to MainActivity
+                                val intent = Intent(context, MainActivity::class.java)
+                                context.startActivity(intent)
+                            } else {
+                                // No username - go to FriendingActivity
+                                val intent = Intent(context, CreateUsernameActivity::class.java)
+                                context.startActivity(intent)
+                            }
+                        }
+                        .addOnFailureListener {
+                            message = "Error checking username"
+                        }
                 } else {
                     message = task.exception?.message ?: "Login Failed"
                 }
