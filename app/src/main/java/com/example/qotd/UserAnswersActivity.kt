@@ -2,6 +2,7 @@ package com.example.qotd
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -33,7 +34,8 @@ class UserAnswersActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+/*
+         disabled for now
         // Check if the user came from the QOTD screen
         val isComingFromQOTD = intent.getBooleanExtra("isComingFromQOTD", false)
 
@@ -41,7 +43,7 @@ class UserAnswersActivity : ComponentActivity() {
         if (isComingFromQOTD) {
             onBackPressedDispatcher.addCallback(this) {
             }
-        }
+        }*/
 
         val questionDate = LocalDate.now() // Internal date format for Firebase (yyyy-MM-dd)
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) // Display format (March 26, 2025)

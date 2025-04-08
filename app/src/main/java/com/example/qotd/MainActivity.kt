@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +32,13 @@ class MainActivity : ComponentActivity() {
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
         // Check if the user has already answered for today
-        checkIfAnsweredToday(currentUserId)
+        //checkIfAnsweredToday(currentUserId)
+        // TODO:
+        // make it so if you already answered,
+        // answer option is greyed out
+        // "take me to answers" button?
+        // or take to answers by default, but
+        // want to still get to MainActivity ability for nav
 
         setContent {
             QOTDTheme {
@@ -55,11 +63,28 @@ class MainActivity : ComponentActivity() {
                         ) {
                             QuestionAnswerScreen(scope, snackbarHostState)
                         }
+                        /*IconButton(onClick = { logoutAndNavigate() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = "Logout"
+                            )
+                        }*/
                     }
                 }
             }
         }
     }
+/* in theory this logout button should work but back button is a bitch
+    // Function to log out and navigate to the login screen
+    private fun logoutAndNavigate() {
+        // Sign out the user
+        FirebaseAuth.getInstance().signOut()
+
+        // Navigate to the login screen
+        val intent = Intent(this, LoginActivity::class.java)
+        startActivity(intent)
+        finish() // Close the current activity to prevent returning after logout
+    }*/
 
     // Function to check if the user has already answered the QOTD today
     private fun checkIfAnsweredToday(userId: String) {
