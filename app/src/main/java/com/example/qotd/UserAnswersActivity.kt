@@ -3,48 +3,48 @@ package com.example.qotd
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.ExitToApp // Add this import for logout icon
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.addCallback
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.ui.text.font.FontWeight
 
 class UserAnswersActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Check if the user came from the QOTD screen
+        val dateStringFromIntent = intent.getStringExtra("questionDate")
+        val questionDate = dateStringFromIntent?.let { LocalDate.parse(it) } ?: LocalDate.now()
+        val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+
         val isComingFromQOTD = intent.getBooleanExtra("isComingFromQOTD", false)
-
-        // Disable back button if coming from QOTD screen
         if (isComingFromQOTD) {
-            onBackPressedDispatcher.addCallback(this) {
-            }
+            onBackPressedDispatcher.addCallback(this) {}
         }
-
-        val questionDate = LocalDate.now() // Internal date format for Firebase (yyyy-MM-dd)
-        val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) // Display format (March 26, 2025)
 
         setContent {
             QOTDTheme {
@@ -58,16 +58,34 @@ class UserAnswersActivity : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = displayDate,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            IconButton(onClick = { logoutAndNavigate() }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                    contentDescription = "Logout"
+                            // Left side (Date + Past Questions button)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        val intent = Intent(this@UserAnswersActivity, PastQuestionsActivity::class.java)
+                                        startActivity(intent)
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.past_icon),
+                                        contentDescription = "Past QOTDs",
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Text(
+                                    text = displayDate,
+                                    style = MaterialTheme.typography.titleLarge
                                 )
                             }
+
+                            // Right side: Reusable Logout Button
+                            LogoutButton(onLogout = { logoutAndNavigate() })
                         }
                     }
                 ) { innerPadding ->
@@ -84,17 +102,34 @@ class UserAnswersActivity : ComponentActivity() {
         }
     }
 
-    // Function to log out and navigate to the login screen
     private fun logoutAndNavigate() {
-        // Sign out the user
         FirebaseAuth.getInstance().signOut()
-
-        // Navigate to the login screen
         val intent = Intent(this, LoginActivity::class.java)
         startActivity(intent)
-        finish() // Close the current activity to prevent returning after logout
+        finish()
     }
 }
+
+// Reusable LogoutButton composable
+@Composable
+fun LogoutButton(
+    onLogout: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onLogout,
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+            contentDescription = "Logout",
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(28.dp)
+        )
+    }
+}
+
+
 
 @Composable
 fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
@@ -115,7 +150,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
         firestore.collection("dailyAnswer")
             .whereEqualTo("questionDate", questionDate.toString()) // Use the internal date format for Firebase
             .addSnapshotListener { snapshot, _ ->
-                snapshot?.let {
+                snapshot?.let { it ->
                     answers = it.documents.mapNotNull { doc ->
                         val data = doc.data
                         if (data != null) Pair(doc.id, data) else null
@@ -140,9 +175,21 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // Display the question of the day
+        Text(
+            text = buildAnnotatedString {
+                // QOTD: with blue and bold style
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = MaterialTheme.typography.headlineLarge.fontSize)) {
+                    append("QOTD: ")
+                }
+                // The question of the day in its regular style
+                withStyle(style = MaterialTheme.typography.headlineMedium.toSpanStyle()) {
+                    append(questionOfTheDay)
+                }
+            },
+            style = MaterialTheme.typography.headlineMedium.copy(lineHeight = 40.sp)  // line spacing
+        )
 
-        Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -259,7 +306,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                                 },
                                 modifier = Modifier.padding(top = 8.dp)
                             ) {
-                                Text("Post Comment")
+                                Text("Reply")
                             }
                         }
                     }
