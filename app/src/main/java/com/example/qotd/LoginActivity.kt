@@ -53,11 +53,9 @@ fun LoginScreen(modifier: Modifier) {
                         .get()
                         .addOnSuccessListener { document ->
                             if (document.exists() && document.getString("username") != null) {
-                                // Has username - go to MainActivity
-                                val intent = Intent(context, AddFriendActivity::class.java)
+                                val intent = Intent(context, MainActivity::class.java)
                                 context.startActivity(intent)
                             } else {
-                                // No username - go to FriendingActivity
                                 val intent = Intent(context, CreateUsernameActivity::class.java)
                                 context.startActivity(intent)
                             }

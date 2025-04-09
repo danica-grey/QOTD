@@ -1,11 +1,13 @@
 package com.example.qotd
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
@@ -49,6 +51,7 @@ fun SetUsernameScreen(
     var isUsernameAvailable by remember { mutableStateOf<Boolean?>(null) }
     val currentUser = FirebaseAuth.getInstance().currentUser
     val db = FirebaseFirestore.getInstance()
+    val context = LocalContext.current
 
     // Function to check username availability
     fun checkUsernameAvailability(username: String) {
@@ -142,6 +145,8 @@ fun SetUsernameScreen(
                                 .addOnSuccessListener {
                                     isLoading = false
                                     onUsernameSet()
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
                                 }
                                 .addOnFailureListener { e ->
                                     isLoading = false
