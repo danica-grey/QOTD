@@ -2,76 +2,70 @@ package com.example.qotd
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.ExitToApp // Add this import for logout icon
+import androidx.compose.ui.text.font.FontWeight
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.addCallback
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.ui.text.font.FontWeight
 
 class UserAnswersActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-/*
-         disabled for now
-        // Check if the user came from the QOTD screen
-        val isComingFromQOTD = intent.getBooleanExtra("isComingFromQOTD", false)
 
-        // Disable back button if coming from QOTD screen
-        if (isComingFromQOTD) {
-            onBackPressedDispatcher.addCallback(this) {
-            }
-        }*/
-
-        val questionDate = LocalDate.now() // Internal date format for Firebase (yyyy-MM-dd)
-        val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) // Display format (March 26, 2025)
+        val questionDate = LocalDate.now()
+        val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
 
         setContent {
+            val context = LocalContext.current
+
             QOTDTheme {
                 Scaffold(
-                    modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = displayDate,
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            IconButton(onClick = { logoutAndNavigate() }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                    contentDescription = "Logout"
+                        SmallTopAppBar(
+                            title = {
+                                Text(
+                                    text = displayDate,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.padding(start = 8.dp),  // only padding now
+                                    maxLines = 1
                                 )
-                            }
-                        }
-                    }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                    if (context is ComponentActivity) context.finish()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.smallTopAppBarColors()
+                        )
+                    },
+                    modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
@@ -84,17 +78,6 @@ class UserAnswersActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    // Function to log out and navigate to the login screen
-    private fun logoutAndNavigate() {
-        // Sign out the user
-        FirebaseAuth.getInstance().signOut()
-
-        // Navigate to the login screen
-        val intent = Intent(this, LoginActivity::class.java)
-        startActivity(intent)
-        finish() // Close the current activity to prevent returning after logout
     }
 }
 
