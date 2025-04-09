@@ -94,35 +94,27 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val dailyQuestionRef = db.collection("dailyQuestions").document(todayDate)
 
-        // Tries to get today's question from Firestore
         dailyQuestionRef.get().addOnSuccessListener { document ->
-            // If it exists, show it
             if (document.exists()) {
                 val qotd = document.getString("question") ?: "Error loading question."
                 question = qotd
-            // If not:
             } else {
                 db.collection("questions").get().addOnSuccessListener { result ->
                     val questionsList = result.documents.mapNotNull { it.getString("Question") }
                     if (questionsList.isNotEmpty()) {
-                        // Pick a random question and save it as today's question
                         val randomQuestion = questionsList.random()
                         dailyQuestionRef.set(mapOf("question" to randomQuestion))
-
-                        // then display it
                         question = randomQuestion
                     } else {
                         question = "No questions available."
                     }
                 }
             }
-        // If the Firestore read fails (network issue, permission issue, etc.):
         }.addOnFailureListener {
             question = "Failed to load question."
         }
     }
 
-    // Fetch question when the screen is first composed
     LaunchedEffect(Unit) {
         fetchQuestionOfTheDay()
     }
@@ -130,18 +122,17 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Login Button at the top-left corner
-        Button(
-            onClick = {
+        LogoutButton(
+            onLogout = {
+                FirebaseAuth.getInstance().signOut()
                 val intent = Intent(context, LoginActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 context.startActivity(intent)
             },
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 16.dp, start = 16.dp)
-        ) {
-            Text("Login")
-        }
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+            )
 
         // Main content (QOTD, answer input, etc.)
         Column(
@@ -188,7 +179,6 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                                 userAnswer = ""
                                 message = status
 
-                                // After submitting the answer, go to UserAnswersActivity
                                 val intent = Intent(context, UserAnswersActivity::class.java)
                                 intent.putExtra("isComingFromQOTD", true)
                                 context.startActivity(intent)

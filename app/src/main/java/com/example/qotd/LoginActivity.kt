@@ -105,10 +105,10 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
         Button(onClick = {
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        message = "Signup Successful! You can now log in."
+                    message = if (task.isSuccessful) {
+                        "Signup Successful! You can now log in."
                     } else {
-                        message = task.exception?.message ?: "Signup Failed"
+                        task.exception?.message ?: "Signup Failed"
                     }
                 }
         }) {
