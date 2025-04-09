@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
-import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
 
 class LoginActivity : ComponentActivity() {
@@ -40,43 +39,50 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
     var message by remember { mutableStateOf("") }
     val auth = FirebaseAuth.getInstance()
     val context = LocalContext.current
-    val firestore = FirebaseFirestore.getInstance()
 
     // Login button action
     val loginAction = {
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    message = "Login Successful!"
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+        // Validate if the email and password fields are not empty
+        if (email.isEmpty() || password.isEmpty()) {
+            message = "Please fill in both fields."
+        } else {
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        message = "Login Successful!"
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-                    if (userId != null) {
-                        val questionDate = LocalDate.now().toString() // Today's date in format yyyy-MM-dd
+                        if (userId != null) {
+                            val questionDate = LocalDate.now().toString() // Today's date in format yyyy-MM-dd
 
-                        firestore.collection("dailyAnswer")
-                            .whereEqualTo("userId", userId)
-                            .whereEqualTo("questionDate", questionDate) // Check if the user has answered today
-                            .get()
-                            .addOnSuccessListener { snapshot ->
-                                if (snapshot.isEmpty) {
-                                    // User hasn't answered, go to QOTD screen
-                                    val intent = Intent(context, MainActivity::class.java)
-                                    context.startActivity(intent)
-                                } else {
-                                    // User has answered, go to Answers screen
-                                    val intent = Intent(context, UserAnswersActivity::class.java)
-                                    context.startActivity(intent)
-                                }
-                                activity.finish() // Prevent back navigation to Login screen
-                            }
-                            .addOnFailureListener {
-                                message = "Failed to check QOTD status"
-                            }
+                            // Check if the user has answered today's question
+                            // (Note: removed the firestore-related part for now)
+                            val intent = Intent(context, MainActivity::class.java)
+                            context.startActivity(intent)
+                            activity.finish() // Prevent back navigation to Login screen
+                        }
+                    } else {
+                        message = task.exception?.message ?: "Login Failed"
                     }
-                } else {
-                    message = task.exception?.message ?: "Login Failed"
                 }
-            }
+        }
+    }
+
+    // Sign up button action
+    val signUpAction = {
+        // Validate if the email and password fields are not empty
+        if (email.isEmpty() || password.isEmpty()) {
+            message = "Please fill in both fields."
+        } else {
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        message = "Signup Successful! You can now log in."
+                    } else {
+                        message = task.exception?.message ?: "Signup Failed"
+                    }
+                }
+        }
     }
 
     Column(
@@ -102,33 +108,9 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(onClick = {
-            auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        // Save credentials to Firestore
-                        val userMap = hashMapOf(
-                            "email" to email,
-                            "password" to password // In a real app, don't store plain passwords!
-                        )
-                        // Create a document with the email as the document ID
-                        firestore.collection("user_credentials").document(email)
-                            .set(userMap)
-                            .addOnSuccessListener {
-                                message = "Signup Successful! You can now log in."
-                            }
-                            .addOnFailureListener {
-                                message = "Error storing credentials: ${it.message}"
-                            }
-                    } else {
-                        message = task.exception?.message ?: "Signup Failed"
-                    }
-                }
-        }) {
+        Button(onClick = { signUpAction() }) {
             Text("Sign Up")
         }
-
-
 
         TextButton(onClick = {
             val intent = Intent(context, ForgotPasswordActivity::class.java)

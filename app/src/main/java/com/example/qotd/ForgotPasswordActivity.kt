@@ -1,7 +1,6 @@
 package com.example.qotd
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -37,10 +36,10 @@ fun ForgotPasswordScreen() {
         if (email.isNotEmpty()) {
             auth.sendPasswordResetEmail(email)
                 .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        message = "Password reset email sent!"
+                    message = if (task.isSuccessful) {
+                        "Password reset email sent!"
                     } else {
-                        message = "Failed to send reset email: ${task.exception?.message}"
+                        "Failed to send reset email: ${task.exception?.message}"
                     }
                 }
         } else {
