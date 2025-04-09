@@ -29,17 +29,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-
-        // Check if the user has already answered for today
-        //checkIfAnsweredToday(currentUserId)
-        // TODO:
-        // make it so if you already answered,
-        // answer option is greyed out
-        // "take me to answers" button?
-        // or take to answers by default, but
-        // want to still get to MainActivity ability for nav
-
         setContent {
             QOTDTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -63,28 +52,11 @@ class MainActivity : ComponentActivity() {
                         ) {
                             QuestionAnswerScreen(scope, snackbarHostState)
                         }
-                        /*IconButton(onClick = { logoutAndNavigate() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                contentDescription = "Logout"
-                            )
-                        }*/
                     }
                 }
             }
         }
     }
-/* in theory this logout button should work but back button is a bitch
-    // Function to log out and navigate to the login screen
-    private fun logoutAndNavigate() {
-        // Sign out the user
-        FirebaseAuth.getInstance().signOut()
-
-        // Navigate to the login screen
-        val intent = Intent(this, LoginActivity::class.java)
-        startActivity(intent)
-        finish() // Close the current activity to prevent returning after logout
-    }*/
 
     // Function to check if the user has already answered the QOTD today
     private fun checkIfAnsweredToday(userId: String) {
@@ -113,35 +85,31 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
+    // Check if the user is signed in and conditionally show the login button
+    val isUserSignedIn = currentUserId.isNotEmpty()
+
     // Function to fetch the daily question
     fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val dailyQuestionRef = db.collection("dailyQuestions").document(todayDate)
 
-        // Tries to get today's question from Firestore
         dailyQuestionRef.get().addOnSuccessListener { document ->
-            // If it exists, show it
             if (document.exists()) {
                 val qotd = document.getString("question") ?: "Error loading question."
                 question = qotd
-            // If not:
             } else {
                 db.collection("questions").get().addOnSuccessListener { result ->
                     val questionsList = result.documents.mapNotNull { it.getString("Question") }
                     if (questionsList.isNotEmpty()) {
-                        // Pick a random question and save it as today's question
                         val randomQuestion = questionsList.random()
                         dailyQuestionRef.set(mapOf("question" to randomQuestion))
-
-                        // then display it
                         question = randomQuestion
                     } else {
                         question = "No questions available."
                     }
                 }
             }
-        // If the Firestore read fails (network issue, permission issue, etc.):
         }.addOnFailureListener {
             question = "Failed to load question."
         }
@@ -152,20 +120,20 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         fetchQuestionOfTheDay()
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Login Button at the top-left corner
-        Button(
-            onClick = {
-                val intent = Intent(context, LoginActivity::class.java)
-                context.startActivity(intent)
-            },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 16.dp, start = 16.dp)
-        ) {
-            Text("Login")
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Conditionally show the Login button based on user sign-in status
+        if (!isUserSignedIn) {
+            Button(
+                onClick = {
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 16.dp, start = 16.dp)
+            ) {
+                Text("Login")
+            }
         }
 
         // Main content (QOTD, answer input, etc.)
@@ -213,7 +181,6 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                                 userAnswer = ""
                                 message = status
 
-                                // After submitting the answer, go to UserAnswersActivity
                                 val intent = Intent(context, UserAnswersActivity::class.java)
                                 intent.putExtra("isComingFromQOTD", true)
                                 context.startActivity(intent)
