@@ -1,6 +1,7 @@
 package com.example.qotd
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -8,19 +9,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.google.firebase.auth.FirebaseAuth
 import com.example.qotd.ui.theme.QOTDTheme
-import com.google.firebase.firestore.FirebaseFirestore
 
 class ForgotPasswordActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             QOTDTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    ForgotPasswordScreen()
-                }
+                // Content of the Forgot Password screen
+                ForgotPasswordScreen()
             }
         }
     }
@@ -28,11 +28,25 @@ class ForgotPasswordActivity : ComponentActivity() {
 
 @Composable
 fun ForgotPasswordScreen() {
-    val firestore = FirebaseFirestore.getInstance()
     var email by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
+    val auth = FirebaseAuth.getInstance()
+
+    // Reset password action
+    val resetPasswordAction = {
+        if (email.isNotEmpty()) {
+            auth.sendPasswordResetEmail(email)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        message = "Password reset email sent!"
+                    } else {
+                        message = "Failed to send reset email: ${task.exception?.message}"
+                    }
+                }
+        } else {
+            message = "Please enter your email"
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -41,57 +55,28 @@ fun ForgotPasswordScreen() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Reset Your Password", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        TextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
-        Spacer(modifier = Modifier.height(8.dp))
-
-        TextField(
-            value = newPassword,
-            onValueChange = { newPassword = it },
-            label = { Text("New Password") },
-            visualTransformation = PasswordVisualTransformation()
+        Text(
+            text = "Reset Password",
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(bottom = 24.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
 
         TextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it },
-            label = { Text("Confirm Password") },
-            visualTransformation = PasswordVisualTransformation()
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            if (newPassword != confirmPassword) {
-                message = "Passwords do not match"
-                return@Button
-            }
-
-            val docRef = firestore.collection("user_credentials").document(email)
-            docRef.get().addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    // Update the password
-                    docRef.update("password", newPassword)
-                        .addOnSuccessListener {
-                            message = "Password updated successfully!"
-                        }
-                        .addOnFailureListener {
-                            message = "Failed to update password: ${it.message}"
-                        }
-                } else {
-                    message = "Account with this email doesn't exist"
-                }
-            }.addOnFailureListener {
-                message = "Error: ${it.message}"
-            }
-        }) {
+        Button(onClick = { resetPasswordAction() }) {
             Text("Reset Password")
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Display status message (success or error)
         if (message.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
             Text(message, color = MaterialTheme.colorScheme.primary)
         }
     }
