@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -141,7 +142,10 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = if (isUserSignedIn) "Logout" else "Login"
+                contentDescription = if (isUserSignedIn) "Logout" else "Login",
+                modifier = Modifier.graphicsLayer(
+                    rotationZ = 180f // Rotate the icon 180 degrees to make it point left
+                )
             )
         }
 
