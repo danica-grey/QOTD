@@ -39,7 +39,7 @@ class SplashActivity : ComponentActivity() {
             val db = FirebaseFirestore.getInstance()
             val userRef = db.collection("users").document(userId)
 
-            userRef.get().addOnSuccessListener { document ->
+            userRef.get().addOnSuccessListener { document ->/* disable disabling back button for now
                 val answeredToday = document.getBoolean("answeredToday") ?: false
                 val lastAnsweredDate = document.getString("lastAnsweredDate")
                 val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -50,7 +50,9 @@ class SplashActivity : ComponentActivity() {
                 } else {
                     // Not answered yet, go to QOTD screen
                     startActivity(Intent(this, MainActivity::class.java))
-                }
+                }*/
+
+                startActivity(Intent(this, MainActivity::class.java))
 
                 finish()
             }.addOnFailureListener {

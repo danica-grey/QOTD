@@ -6,10 +6,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,10 +30,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
+        val cameFromAnswerScreen = sharedPreferences.getBoolean("cameFromAnswerScreen", false)
+
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-        // Check if the user has already answered for today
-        checkIfAnsweredToday(currentUserId)
+        // If the user came from the answer screen, don't redirect to the answer screen again
+        if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
+            // Check if the user has already answered for today
+            checkIfAnsweredToday(currentUserId)
+        }
 
         setContent {
             QOTDTheme {
@@ -59,6 +68,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // Reset the flag after the user has entered the main screen
+        sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
 
     // Function to check if the user has already answered the QOTD today
@@ -88,6 +100,9 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
+    // Check if the user is signed in and conditionally show the login button
+    val isUserSignedIn = currentUserId.isNotEmpty()
+
     // Function to fetch the daily question
     fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
@@ -115,24 +130,38 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         }
     }
 
+    // Fetch question when the screen is first composed
     LaunchedEffect(Unit) {
         fetchQuestionOfTheDay()
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        LogoutButton(
-            onLogout = {
-                FirebaseAuth.getInstance().signOut()
-                val intent = Intent(context, LoginActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                context.startActivity(intent)
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Conditionally show the Login button based on user sign-in status
+        IconButton(
+            onClick = {
+                if (isUserSignedIn) {
+                    // Logout
+                    FirebaseAuth.getInstance().signOut()
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                } else {
+                    // Login
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                }
             },
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .align(Alignment.TopStart)
+                .padding(top = 16.dp, start = 16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = if (isUserSignedIn) "Logout" else "Login",
+                modifier = Modifier.graphicsLayer(
+                    rotationZ = 180f // Rotate the icon 180 degrees to make it point left
+                )
             )
+        }
 
         // Main content (QOTD, answer input, etc.)
         Column(

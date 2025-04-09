@@ -3,91 +3,69 @@ package com.example.qotd
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.addCallback
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.ui.text.font.FontWeight
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class UserAnswersActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val dateStringFromIntent = intent.getStringExtra("questionDate")
-        val questionDate = dateStringFromIntent?.let { LocalDate.parse(it) } ?: LocalDate.now()
+        val questionDate = LocalDate.now()
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
 
-        val isComingFromQOTD = intent.getBooleanExtra("isComingFromQOTD", false)
-        if (isComingFromQOTD) {
-            onBackPressedDispatcher.addCallback(this) {}
-        }
-
         setContent {
+            val context = LocalContext.current
+
             QOTDTheme {
                 Scaffold(
-                    modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Left side (Date + Past Questions button)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        val intent = Intent(this@UserAnswersActivity, PastQuestionsActivity::class.java)
-                                        startActivity(intent)
-                                    },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.past_icon),
-                                        contentDescription = "Past QOTDs",
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
+                        SmallTopAppBar(
+                            title = {
                                 Text(
                                     text = displayDate,
-                                    style = MaterialTheme.typography.titleLarge
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.padding(start = 8.dp),  // only padding now
+                                    maxLines = 1
                                 )
-                            }
-
-                            // Right side: Reusable Logout Button
-                            LogoutButton(onLogout = { logoutAndNavigate() })
-                        }
-                    }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                    if (context is ComponentActivity) context.finish()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.smallTopAppBarColors()
+                        )
+                    },
+                    modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
@@ -102,34 +80,18 @@ class UserAnswersActivity : ComponentActivity() {
         }
     }
 
-    private fun logoutAndNavigate() {
-        FirebaseAuth.getInstance().signOut()
-        val intent = Intent(this, LoginActivity::class.java)
+    override fun onBackPressed() {
+        super.onBackPressed()
+        // Set a flag in SharedPreferences that the user is coming from the answer screen
+        val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
+        sharedPreferences.edit().putBoolean("cameFromAnswerScreen", true).apply()
+
+        // Go back to the main screen
+        val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
-        finish()
+        finish()  // Close the current activity to prevent going back
     }
 }
-
-// Reusable LogoutButton composable
-@Composable
-fun LogoutButton(
-    onLogout: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    IconButton(
-        onClick = onLogout,
-        modifier = modifier
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-            contentDescription = "Logout",
-            tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(28.dp)
-        )
-    }
-}
-
-
 
 @Composable
 fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
@@ -150,7 +112,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
         firestore.collection("dailyAnswer")
             .whereEqualTo("questionDate", questionDate.toString()) // Use the internal date format for Firebase
             .addSnapshotListener { snapshot, _ ->
-                snapshot?.let { it ->
+                snapshot?.let {
                     answers = it.documents.mapNotNull { doc ->
                         val data = doc.data
                         if (data != null) Pair(doc.id, data) else null
@@ -175,21 +137,9 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = buildAnnotatedString {
-                // QOTD: with blue and bold style
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = MaterialTheme.typography.headlineLarge.fontSize)) {
-                    append("QOTD: ")
-                }
-                // The question of the day in its regular style
-                withStyle(style = MaterialTheme.typography.headlineMedium.toSpanStyle()) {
-                    append(questionOfTheDay)
-                }
-            },
-            style = MaterialTheme.typography.headlineMedium.copy(lineHeight = 40.sp)  // line spacing
-        )
+        // Display the question of the day
 
-
+        Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(16.dp))
 
