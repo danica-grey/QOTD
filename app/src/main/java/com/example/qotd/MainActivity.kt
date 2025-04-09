@@ -122,18 +122,27 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Conditionally show the Login button based on user sign-in status
-        if (!isUserSignedIn) {
-            Button(
-                onClick = {
+        IconButton(
+            onClick = {
+                if (isUserSignedIn) {
+                    // Logout
+                    FirebaseAuth.getInstance().signOut()
                     val intent = Intent(context, LoginActivity::class.java)
                     context.startActivity(intent)
-                },
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(top = 16.dp, start = 16.dp)
-            ) {
-                Text("Login")
-            }
+                } else {
+                    // Login
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = 16.dp, start = 16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = if (isUserSignedIn) "Logout" else "Login"
+            )
         }
 
         // Main content (QOTD, answer input, etc.)
