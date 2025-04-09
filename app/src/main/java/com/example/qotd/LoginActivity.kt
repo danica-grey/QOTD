@@ -115,6 +115,13 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
             Text("Sign Up")
         }
 
+        TextButton(onClick = {
+            val intent = Intent(context, ForgotPasswordActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("Forgot Password?")
+        }
+
         if (message.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(message, color = MaterialTheme.colorScheme.primary)
