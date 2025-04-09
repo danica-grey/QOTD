@@ -106,7 +106,20 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
-                        message = "Signup Successful! You can now log in."
+                        // Save credentials to Firestore
+                        val userMap = hashMapOf(
+                            "email" to email,
+                            "password" to password // In a real app, don't store plain passwords!
+                        )
+                        // Create a document with the email as the document ID
+                        firestore.collection("user_credentials").document(email)
+                            .set(userMap)
+                            .addOnSuccessListener {
+                                message = "Signup Successful! You can now log in."
+                            }
+                            .addOnFailureListener {
+                                message = "Error storing credentials: ${it.message}"
+                            }
                     } else {
                         message = task.exception?.message ?: "Signup Failed"
                     }
@@ -114,6 +127,8 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
         }) {
             Text("Sign Up")
         }
+
+
 
         TextButton(onClick = {
             val intent = Intent(context, ForgotPasswordActivity::class.java)
@@ -128,4 +143,3 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
         }
     }
 }
-
