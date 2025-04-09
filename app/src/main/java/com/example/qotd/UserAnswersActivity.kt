@@ -79,6 +79,18 @@ class UserAnswersActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        // Set a flag in SharedPreferences that the user is coming from the answer screen
+        val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
+        sharedPreferences.edit().putBoolean("cameFromAnswerScreen", true).apply()
+
+        // Go back to the main screen
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()  // Close the current activity to prevent going back
+    }
 }
 
 @Composable

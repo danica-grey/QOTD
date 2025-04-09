@@ -30,6 +30,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
+        val cameFromAnswerScreen = sharedPreferences.getBoolean("cameFromAnswerScreen", false)
+
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+        // If the user came from the answer screen, don't redirect to the answer screen again
+        if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
+            // Check if the user has already answered for today
+            checkIfAnsweredToday(currentUserId)
+        }
+
         setContent {
             QOTDTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -57,6 +68,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // Reset the flag after the user has entered the main screen
+        sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
 
     // Function to check if the user has already answered the QOTD today
