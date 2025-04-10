@@ -6,10 +6,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,10 +30,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
+        val cameFromAnswerScreen = sharedPreferences.getBoolean("cameFromAnswerScreen", false)
+
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-        // Check if the user has already answered for today
-        checkIfAnsweredToday(currentUserId)
+        // If the user came from the answer screen, don't redirect again
+        if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
+            checkIfAnsweredToday(currentUserId)
+        }
 
         setContent {
             QOTDTheme {
@@ -59,9 +67,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
 
-    // Function to check if the user has already answered the QOTD today
     private fun checkIfAnsweredToday(userId: String) {
         if (userId.isNotEmpty()) {
             val db = FirebaseFirestore.getInstance()
@@ -70,10 +79,9 @@ class MainActivity : ComponentActivity() {
             userRef.get().addOnSuccessListener { document ->
                 val answeredToday = document.getBoolean("answeredToday") ?: false
                 if (answeredToday) {
-                    // If already answered, go to UserAnswersActivity
                     val intent = Intent(this, UserAnswersActivity::class.java)
                     startActivity(intent)
-                    finish()  // Close the current activity to prevent going back
+                    finish()
                 }
             }
         }
@@ -87,8 +95,8 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
     var message by remember { mutableStateOf("") }
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val isUserSignedIn = currentUserId.isNotEmpty()
 
-    // Function to fetch the daily question
     fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -96,8 +104,7 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         dailyQuestionRef.get().addOnSuccessListener { document ->
             if (document.exists()) {
-                val qotd = document.getString("question") ?: "Error loading question."
-                question = qotd
+                question = document.getString("question") ?: "Error loading question."
             } else {
                 db.collection("questions").get().addOnSuccessListener { result ->
                     val questionsList = result.documents.mapNotNull { it.getString("Question") }
@@ -119,22 +126,26 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
         fetchQuestionOfTheDay()
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        LogoutButton(
-            onLogout = {
-                FirebaseAuth.getInstance().signOut()
+    Box(modifier = Modifier.fillMaxSize()) {
+        IconButton(
+            onClick = {
+                if (isUserSignedIn) {
+                    FirebaseAuth.getInstance().signOut()
+                }
                 val intent = Intent(context, LoginActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 context.startActivity(intent)
             },
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .align(Alignment.TopStart)
+                .padding(top = 16.dp, start = 16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = if (isUserSignedIn) "Logout" else "Login",
+                modifier = Modifier.graphicsLayer(rotationZ = 180f)
             )
+        }
 
-        // Main content (QOTD, answer input, etc.)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -219,7 +230,6 @@ fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
         }
 }
 
-// Mark the user as having answered today
 fun markAnsweredToday(userId: String) {
     val userAnsweredData = hashMapOf(
         "answeredToday" to true,
@@ -227,7 +237,7 @@ fun markAnsweredToday(userId: String) {
     )
 
     FirebaseFirestore.getInstance()
-        .collection("users")  // Assuming there's a 'users' collection
-        .document(userId)     // Document ID is the user ID
-        .set(userAnsweredData, SetOptions.merge())  // Merge to avoid overwriting other data
+        .collection("users")
+        .document(userId)
+        .set(userAnsweredData, SetOptions.merge())
 }

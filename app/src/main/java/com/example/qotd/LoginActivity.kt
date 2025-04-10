@@ -44,39 +44,56 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
 
     // Login button action
     val loginAction = {
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    message = "Login Successful!"
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (email.isEmpty() || password.isEmpty()) {
+            message = "Please fill in both fields."
+        } else {
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        message = "Login Successful!"
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-                    if (userId != null) {
-                        val questionDate = LocalDate.now().toString() // Today's date in format yyyy-MM-dd
+                        if (userId != null) {
+                            val questionDate = LocalDate.now().toString()
 
-                        firestore.collection("dailyAnswer")
-                            .whereEqualTo("userId", userId)
-                            .whereEqualTo("questionDate", questionDate) // Check if the user has answered today
-                            .get()
-                            .addOnSuccessListener { snapshot ->
-                                if (snapshot.isEmpty) {
-                                    // User hasn't answered, go to QOTD screen
-                                    val intent = Intent(context, MainActivity::class.java)
+                            firestore.collection("dailyAnswer")
+                                .whereEqualTo("userId", userId)
+                                .whereEqualTo("questionDate", questionDate)
+                                .get()
+                                .addOnSuccessListener { snapshot ->
+                                    val intent = if (snapshot.isEmpty) {
+                                        Intent(context, MainActivity::class.java)
+                                    } else {
+                                        Intent(context, UserAnswersActivity::class.java)
+                                    }
                                     context.startActivity(intent)
-                                } else {
-                                    // User has answered, go to Answers screen
-                                    val intent = Intent(context, UserAnswersActivity::class.java)
-                                    context.startActivity(intent)
+                                    activity.finish()
                                 }
-                                activity.finish() // Prevent back navigation to Login screen
-                            }
-                            .addOnFailureListener {
-                                message = "Failed to check QOTD status"
-                            }
+                                .addOnFailureListener {
+                                    message = "Failed to check QOTD status"
+                                }
+                        }
+                    } else {
+                        message = task.exception?.message ?: "Login Failed"
                     }
-                } else {
-                    message = task.exception?.message ?: "Login Failed"
                 }
-            }
+        }
+    }
+
+    // Sign up button action
+    val signUpAction = {
+        if (email.isEmpty() || password.isEmpty()) {
+            message = "Please fill in both fields."
+        } else {
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    message = if (task.isSuccessful) {
+                        "Signup Successful! You can now log in."
+                    } else {
+                        task.exception?.message ?: "Signup Failed"
+                    }
+                }
+        }
     }
 
     Column(
@@ -102,17 +119,15 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(onClick = {
-            auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    message = if (task.isSuccessful) {
-                        "Signup Successful! You can now log in."
-                    } else {
-                        task.exception?.message ?: "Signup Failed"
-                    }
-                }
-        }) {
+        Button(onClick = { signUpAction() }) {
             Text("Sign Up")
+        }
+
+        TextButton(onClick = {
+            val intent = Intent(context, ForgotPasswordActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("Forgot Password?")
         }
 
         if (message.isNotEmpty()) {
@@ -121,4 +136,3 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
         }
     }
 }
-
