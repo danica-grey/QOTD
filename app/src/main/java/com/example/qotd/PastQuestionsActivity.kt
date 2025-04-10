@@ -21,9 +21,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 
 class PastQuestionsActivity : ComponentActivity() {
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -31,25 +34,23 @@ class PastQuestionsActivity : ComponentActivity() {
             QOTDTheme {
                 Scaffold(
                     topBar = {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 24.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Past Questions",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 30.sp
+                        SmallTopAppBar(
+                            title = {
+                                Text(
+                                    text = "Past Questions",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.padding(start = 8.dp)
                                 )
-                            )
-
-                            // Logout button
-                            LogoutButton(onLogout = { logoutAndNavigate() })
-
-                        }
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    // Use finish() to close the current activity
+                                    finish() // This will return to the previous screen
+                                }) {
+                                    Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            }
+                        )
                     }
                 ) { innerPadding ->
                     Column(
@@ -64,10 +65,10 @@ class PastQuestionsActivity : ComponentActivity() {
         }
     }
 
-    private fun logoutAndNavigate() {
-        FirebaseAuth.getInstance().signOut()
-        val intent = Intent(this, LoginActivity::class.java)
-        startActivity(intent)
+    override fun onBackPressed() {
+        // Manually handle back press
+        super.onBackPressed()
+        // Ensure returning to the previous screen or closing the activity
         finish()
     }
 }
@@ -150,7 +151,7 @@ fun PastQuestionItem(pastQuestion: PastQuestion) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = if (isToday) {pastQuestion.question} else pastQuestion.question,
+                text = if (isToday) { pastQuestion.question } else pastQuestion.question,
                 fontSize = MaterialTheme.typography.bodyLarge.fontSize * 1.2f,
                 fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Normal
             )
@@ -165,6 +166,5 @@ fun PastQuestionItem(pastQuestion: PastQuestion) {
         }
     }
 }
-
 
 data class PastQuestion(val date: String, val question: String)

@@ -27,6 +27,13 @@
             </intent-filter>
         </activity>
 
+        <!-- PastQuestionsActivity -->
+        <activity
+            android:name=".PastQuestionsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_past_questions"
+            android:theme="@style/Theme.QOTD" />
+
         <!-- LoginActivity -->
         <activity
             android:name=".LoginActivity"

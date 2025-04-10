@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -35,15 +36,26 @@ class MainActivity : ComponentActivity() {
 
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-        // If the user came from the answer screen, don't redirect again
-        if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
-            checkIfAnsweredToday(currentUserId)
-        }
-
         setContent {
             QOTDTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+                var answeredToday by remember { mutableStateOf(false) }
+
+                LaunchedEffect(currentUserId) {
+                    if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
+                        val db = FirebaseFirestore.getInstance()
+                        val userRef = db.collection("users").document(currentUserId)
+
+                        try {
+                            val document = userRef.get().await()
+                            answeredToday = document.getBoolean("answeredToday") ?: false
+                        } catch (e: Exception) {
+                            // Optional: handle error
+                        }
+                    }
+                }
+
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -61,7 +73,12 @@ class MainActivity : ComponentActivity() {
                                 .weight(1f)
                                 .fillMaxWidth()
                         ) {
-                            QuestionAnswerScreen(scope, snackbarHostState)
+                            QuestionAnswerScreen(
+                                scope = scope,
+                                snackbarHostState = snackbarHostState,
+                                answeredToday = answeredToday,
+                                setAnsweredToday = { answeredToday = it } // this lets the child modify the parent's state
+                            )
                         }
                     }
                 }
@@ -70,29 +87,17 @@ class MainActivity : ComponentActivity() {
 
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
-
-    private fun checkIfAnsweredToday(userId: String) {
-        if (userId.isNotEmpty()) {
-            val db = FirebaseFirestore.getInstance()
-            val userRef = db.collection("users").document(userId)
-
-            userRef.get().addOnSuccessListener { document ->
-                val answeredToday = document.getBoolean("answeredToday") ?: false
-                if (answeredToday) {
-                    val intent = Intent(this, UserAnswersActivity::class.java)
-                    startActivity(intent)
-                    finish()
-                }
-            }
-        }
-    }
 }
 
 @Composable
-fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostState) {
+fun QuestionAnswerScreen(
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    answeredToday: Boolean,
+    setAnsweredToday: (Boolean) -> Unit
+) {
     var question by remember { mutableStateOf("Loading question...") }
     var userAnswer by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val isUserSignedIn = currentUserId.isNotEmpty()
@@ -137,12 +142,14 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(top = 16.dp, start = 16.dp)
+                .padding(top = 16.dp, start = 8.dp) // Increase padding from start to move left
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                 contentDescription = if (isUserSignedIn) "Logout" else "Login",
-                modifier = Modifier.graphicsLayer(rotationZ = 180f)
+                modifier = Modifier
+                    .graphicsLayer(rotationZ = 180f)
+                    .size(28.dp) // Increase size of the icon
             )
         }
 
@@ -167,38 +174,56 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                 value = userAnswer,
                 onValueChange = { userAnswer = it },
                 label = { Text("Type something...") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !answeredToday
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
+            if (!answeredToday) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = {
+                            if (userAnswer.isBlank()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Answer cannot be empty.")
+                                }
+                            } else {
+                                submitAnswer(currentUserId, userAnswer) { status ->
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(status)
+                                    }
+                                    if (status == "Answer submitted.") {
+                                        userAnswer = ""
+                                        setAnsweredToday(true)
+                                        val intent = Intent(context, UserAnswersActivity::class.java)
+                                        intent.putExtra("isComingFromQOTD", true)
+                                        context.startActivity(intent)
+                                    }
+                                }
+
+                            }
+                        },
+                        modifier = Modifier.height(52.dp)
+                    ) {
+                        Text("Submit", fontSize = 20.sp)
+                    }
+                }
+            } else {
                 Button(
                     onClick = {
-                        if (userAnswer.isBlank()) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Answer cannot be empty.")
-                            }
-                        } else {
-                            submitAnswer(currentUserId, userAnswer) { status ->
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(status)
-                                }
-                                userAnswer = ""
-                                message = status
-
-                                val intent = Intent(context, UserAnswersActivity::class.java)
-                                intent.putExtra("isComingFromQOTD", true)
-                                context.startActivity(intent)
-                            }
-                        }
+                        val intent = Intent(context, UserAnswersActivity::class.java)
+                        intent.putExtra("isComingFromQOTD", true)
+                        context.startActivity(intent)
                     },
-                    modifier = Modifier.height(52.dp)
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .height(52.dp)
                 ) {
-                    Text("Submit", fontSize = 20.sp)
+                    Text("View Answers", fontSize = 20.sp)
                 }
             }
         }
