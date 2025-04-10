@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.auth.ktx)
+    implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.storage)
     testImplementation(libs.junit)

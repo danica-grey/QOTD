@@ -236,6 +236,23 @@ fun QuestionAnswerScreen(
                 }
             }
         }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            contentAlignment = Alignment.TopEnd
+        ) {
+            Button(
+                onClick = {
+                    val intent = Intent(context, AddFriendActivity::class.java)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+            ) {
+                Text("Friends List")
+            }
+        }
     }
 }
 

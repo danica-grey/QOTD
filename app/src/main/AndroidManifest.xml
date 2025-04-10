@@ -48,13 +48,14 @@
 
         <activity android:name=".ReplaceQuestionActivity" />
         <activity android:name=".UserAnswersActivity" />
-
+        <activity android:name=".LoginActivity" />
+        <activity android:name=".CreateUsernameActivity" />
+        <activity android:name=".AddFriendActivity" />
         <!-- ForgotPasswordActivity (added in develop branch) -->
         <activity
             android:name=".ForgotPasswordActivity"
             android:exported="true"
             android:theme="@style/Theme.QOTD" />
-
     </application>
 
 </manifest>
