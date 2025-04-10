@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -45,6 +46,21 @@ class MainActivity : ComponentActivity() {
             QOTDTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+                var answeredToday by remember { mutableStateOf(false) }
+
+                LaunchedEffect(currentUserId) {
+                    if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
+                        val db = FirebaseFirestore.getInstance()
+                        val userRef = db.collection("users").document(currentUserId)
+
+                        try {
+                            val document = userRef.get().await()
+                            answeredToday = document.getBoolean("answeredToday") ?: false
+                        } catch (e: Exception) {
+                            // Optional: handle error
+                        }
+                    }
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -62,7 +78,12 @@ class MainActivity : ComponentActivity() {
                                 .weight(1f)
                                 .fillMaxWidth()
                         ) {
-                            QuestionAnswerScreen(scope, snackbarHostState)
+                            QuestionAnswerScreen(
+                                scope = scope,
+                                snackbarHostState = snackbarHostState,
+                                answeredToday = answeredToday,
+                                setAnsweredToday = { answeredToday = it }
+                            )
                         }
                     }
                 }
@@ -72,35 +93,19 @@ class MainActivity : ComponentActivity() {
         // Reset the flag after the user has entered the main screen
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
-
-    // Function to check if the user has already answered the QOTD today
-    private fun checkIfAnsweredToday(userId: String) {
-        if (userId.isNotEmpty()) {
-            val db = FirebaseFirestore.getInstance()
-            val userRef = db.collection("users").document(userId)
-
-            userRef.get().addOnSuccessListener { document ->
-                val answeredToday = document.getBoolean("answeredToday") ?: false
-                if (answeredToday) {
-                    // If already answered, go to UserAnswersActivity
-                    val intent = Intent(this, UserAnswersActivity::class.java)
-                    startActivity(intent)
-                    finish()  // Close the current activity to prevent going back
-                }
-            }
-        }
-    }
 }
 
 @Composable
-fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostState) {
+fun QuestionAnswerScreen(
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    answeredToday: Boolean,
+    setAnsweredToday: (Boolean) -> Unit
+) {
     var question by remember { mutableStateOf("Loading question...") }
     var userAnswer by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-
-    // Check if the user is signed in and conditionally show the login button
     val isUserSignedIn = currentUserId.isNotEmpty()
 
     // Function to fetch the daily question
@@ -111,8 +116,7 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
 
         dailyQuestionRef.get().addOnSuccessListener { document ->
             if (document.exists()) {
-                val qotd = document.getString("question") ?: "Error loading question."
-                question = qotd
+                question = document.getString("question") ?: "Error loading question."
             } else {
                 db.collection("questions").get().addOnSuccessListener { result ->
                     val questionsList = result.documents.mapNotNull { it.getString("Question") }
@@ -163,7 +167,6 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
             )
         }
 
-        // Main content (QOTD, answer input, etc.)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -185,38 +188,55 @@ fun QuestionAnswerScreen(scope: CoroutineScope, snackbarHostState: SnackbarHostS
                 value = userAnswer,
                 onValueChange = { userAnswer = it },
                 label = { Text("Type something...") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !answeredToday
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
+            if (!answeredToday) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = {
+                            if (userAnswer.isBlank()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Answer cannot be empty.")
+                                }
+                            } else {
+                                submitAnswer(currentUserId, userAnswer) { status ->
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(status)
+                                    }
+                                    if (status == "Answer submitted.") {
+                                        userAnswer = ""
+                                        setAnsweredToday(true)
+                                        val intent = Intent(context, UserAnswersActivity::class.java)
+                                        intent.putExtra("isComingFromQOTD", true)
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.height(52.dp)
+                    ) {
+                        Text("Submit", fontSize = 20.sp)
+                    }
+                }
+            } else {
                 Button(
                     onClick = {
-                        if (userAnswer.isBlank()) {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Answer cannot be empty.")
-                            }
-                        } else {
-                            submitAnswer(currentUserId, userAnswer) { status ->
-                                scope.launch {
-                                    snackbarHostState.showSnackbar(status)
-                                }
-                                userAnswer = ""
-                                message = status
-
-                                val intent = Intent(context, UserAnswersActivity::class.java)
-                                intent.putExtra("isComingFromQOTD", true)
-                                context.startActivity(intent)
-                            }
-                        }
+                        val intent = Intent(context, UserAnswersActivity::class.java)
+                        intent.putExtra("isComingFromQOTD", true)
+                        context.startActivity(intent)
                     },
-                    modifier = Modifier.height(52.dp)
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .height(52.dp)
                 ) {
-                    Text("Submit", fontSize = 20.sp)
+                    Text("View Answers", fontSize = 20.sp)
                 }
             }
         }
@@ -248,7 +268,6 @@ fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
         }
 }
 
-// Mark the user as having answered today
 fun markAnsweredToday(userId: String) {
     val userAnsweredData = hashMapOf(
         "answeredToday" to true,
@@ -256,7 +275,7 @@ fun markAnsweredToday(userId: String) {
     )
 
     FirebaseFirestore.getInstance()
-        .collection("users")  // Assuming there's a 'users' collection
-        .document(userId)     // Document ID is the user ID
-        .set(userAnsweredData, SetOptions.merge())  // Merge to avoid overwriting other data
+        .collection("users")
+        .document(userId)
+        .set(userAnsweredData, SetOptions.merge())
 }

@@ -7,22 +7,28 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.Image
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -32,7 +38,8 @@ class UserAnswersActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val questionDate = LocalDate.now()
+        val extras = intent.extras
+        val questionDate = extras?.getString("questionDate")?.let { LocalDate.parse(it) } ?: LocalDate.now()
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
 
         setContent {
@@ -46,7 +53,7 @@ class UserAnswersActivity : ComponentActivity() {
                                 Text(
                                     text = displayDate,
                                     style = MaterialTheme.typography.titleLarge,
-                                    modifier = Modifier.padding(start = 8.dp),  // only padding now
+                                    modifier = Modifier.padding(start = 8.dp),
                                     maxLines = 1
                                 )
                             },
@@ -59,6 +66,24 @@ class UserAnswersActivity : ComponentActivity() {
                                     Icon(
                                         imageVector = Icons.Filled.ArrowBack,
                                         contentDescription = "Back"
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(
+                                    onClick = {
+                                        val intent = Intent(context, PastQuestionsActivity::class.java)
+                                        context.startActivity(intent)
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.past_icon),
+                                        contentDescription = "Past QOTDs",
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .graphicsLayer { rotationY = 180f } // flip so facing right
+                                            .offset(x = (4).dp) // Shift left safely
                                     )
                                 }
                             },
@@ -82,11 +107,9 @@ class UserAnswersActivity : ComponentActivity() {
 
     override fun onBackPressed() {
         super.onBackPressed()
-        // Set a flag in SharedPreferences that the user is coming from the answer screen
         val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", true).apply()
 
-        // Go back to the main screen
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
         finish()  // Close the current activity to prevent going back
@@ -100,24 +123,22 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
     var questionOfTheDay by remember { mutableStateOf("Loading question...") }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
 
-    // Fetch the question of the day
     LaunchedEffect(questionDate) {
         firestore.collection("dailyQuestions")
-            .document(questionDate.toString()) // Use the internal date format for Firebase
+            .document(questionDate.toString())
             .get()
             .addOnSuccessListener { document ->
                 questionOfTheDay = document.getString("question") ?: "No question available for today."
             }
 
         firestore.collection("dailyAnswer")
-            .whereEqualTo("questionDate", questionDate.toString()) // Use the internal date format for Firebase
+            .whereEqualTo("questionDate", questionDate.toString())
             .addSnapshotListener { snapshot, _ ->
                 snapshot?.let {
                     answers = it.documents.mapNotNull { doc ->
                         val data = doc.data
                         if (data != null) Pair(doc.id, data) else null
                     }.let { list ->
-                        // Separate the current user's answer from others and sort the rest by timestamp
                         val (userAnswers, otherAnswers) = list.partition { it.second["userId"] == currentUserId }
 
                         val sortedOthers = otherAnswers.sortedByDescending {
@@ -129,7 +150,6 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                             }
                         }
 
-                        // Combine the user's answer first, followed by the sorted other answers
                         userAnswers + sortedOthers
                     }
                 }
@@ -137,13 +157,10 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // Display the question of the day
-
         Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Display the answers
         LazyColumn {
             items(answers.size) { index ->
                 val (answerId, answer) = answers[index]
@@ -156,7 +173,6 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                 var showComments by remember { mutableStateOf(false) }
                 var newComment by remember { mutableStateOf("") }
 
-                // Calculate the comment button text
                 val replyText = when (commentsList.size) {
                     0 -> "Reply"
                     1 -> "1 Reply"
@@ -170,9 +186,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // Display "Your Answer:" in bold and the answer text in normal style
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            // "Your Answer:" text
                             if (answer["userId"] == currentUserId) {
                                 Text(
                                     text = "Your Answer:",
@@ -180,47 +194,43 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                                 )
                             }
 
-                            // The actual answer text
                             Text(
                                 text = answerText,
                                 style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.padding(top = 5.dp) // Add some space between the label and the answer
+                                modifier = Modifier.padding(top = 5.dp)
                             )
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Heart icon and like count
                             IconButton(onClick = { likeAnswer(answerId, currentUserId) }) {
                                 Icon(
                                     imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                                     contentDescription = "Like",
-                                    tint = MaterialTheme.colorScheme.primary // Set color to blue
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                             Text(
                                 "${likesList.size} Likes",
-                                color = MaterialTheme.colorScheme.primary, // Set the likes text to blue
+                                color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
 
                             Spacer(modifier = Modifier.width(16.dp))
 
-                            // Move the dropdown icon to the left of the "Reply" text
                             if (commentsList.isNotEmpty()) {
                                 Icon(
-                                    imageVector = Icons.Default.ArrowDropDown, // Dropdown symbol
+                                    imageVector = Icons.Default.ArrowDropDown,
                                     contentDescription = "Dropdown",
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                             }
 
-                            // Display the "Replies" text or "Reply" based on comment count
                             Text(
                                 text = replyText,
-                                color = MaterialTheme.colorScheme.primary, // Set reply text to blue
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier
                                     .clickable { showComments = !showComments }
                                     .padding(4.dp),

@@ -16,6 +16,7 @@ import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
 import java.time.LocalDate
+import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,10 +40,10 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
     var message by remember { mutableStateOf("") }
     val auth = FirebaseAuth.getInstance()
     val context = LocalContext.current
+    val firestore = FirebaseFirestore.getInstance()
 
     // Login button action
     val loginAction = {
-        // Validate if the email and password fields are not empty
         if (email.isEmpty() || password.isEmpty()) {
             message = "Please fill in both fields."
         } else {
@@ -53,13 +54,24 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
                         val userId = FirebaseAuth.getInstance().currentUser?.uid
 
                         if (userId != null) {
-                            val questionDate = LocalDate.now().toString() // Today's date in format yyyy-MM-dd
+                            val questionDate = LocalDate.now().toString()
 
-                            // Check if the user has answered today's question
-                            // (Note: removed the firestore-related part for now)
-                            val intent = Intent(context, MainActivity::class.java)
-                            context.startActivity(intent)
-                            activity.finish() // Prevent back navigation to Login screen
+                            firestore.collection("dailyAnswer")
+                                .whereEqualTo("userId", userId)
+                                .whereEqualTo("questionDate", questionDate)
+                                .get()
+                                .addOnSuccessListener { snapshot ->
+                                    val intent = if (snapshot.isEmpty) {
+                                        Intent(context, MainActivity::class.java)
+                                    } else {
+                                        Intent(context, UserAnswersActivity::class.java)
+                                    }
+                                    context.startActivity(intent)
+                                    activity.finish()
+                                }
+                                .addOnFailureListener {
+                                    message = "Failed to check QOTD status"
+                                }
                         }
                     } else {
                         message = task.exception?.message ?: "Login Failed"
@@ -70,7 +82,6 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
 
     // Sign up button action
     val signUpAction = {
-        // Validate if the email and password fields are not empty
         if (email.isEmpty() || password.isEmpty()) {
             message = "Please fill in both fields."
         } else {
