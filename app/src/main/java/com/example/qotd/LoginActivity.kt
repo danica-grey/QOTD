@@ -15,8 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
-import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
+import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,39 +44,56 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
 
     // Login button action
     val loginAction = {
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    message = "Login Successful!"
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (email.isEmpty() || password.isEmpty()) {
+            message = "Please fill in both fields."
+        } else {
+            auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        message = "Login Successful!"
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-                    if (userId != null) {
-                        val questionDate = LocalDate.now().toString() // Today's date in format yyyy-MM-dd
+                        if (userId != null) {
+                            val questionDate = LocalDate.now().toString()
 
-                        firestore.collection("dailyAnswer")
-                            .whereEqualTo("userId", userId)
-                            .whereEqualTo("questionDate", questionDate) // Check if the user has answered today
-                            .get()
-                            .addOnSuccessListener { snapshot ->
-                                if (snapshot.isEmpty) {
-                                    // User hasn't answered, go to QOTD screen
-                                    val intent = Intent(context, MainActivity::class.java)
+                            firestore.collection("dailyAnswer")
+                                .whereEqualTo("userId", userId)
+                                .whereEqualTo("questionDate", questionDate)
+                                .get()
+                                .addOnSuccessListener { snapshot ->
+                                    val intent = if (snapshot.isEmpty) {
+                                        Intent(context, MainActivity::class.java)
+                                    } else {
+                                        Intent(context, UserAnswersActivity::class.java)
+                                    }
                                     context.startActivity(intent)
-                                } else {
-                                    // User has answered, go to Answers screen
-                                    val intent = Intent(context, UserAnswersActivity::class.java)
-                                    context.startActivity(intent)
+                                    activity.finish()
                                 }
-                                activity.finish() // Prevent back navigation to Login screen
-                            }
-                            .addOnFailureListener {
-                                message = "Failed to check QOTD status"
-                            }
+                                .addOnFailureListener {
+                                    message = "Failed to check QOTD status"
+                                }
+                        }
+                    } else {
+                        message = task.exception?.message ?: "Login Failed"
                     }
-                } else {
-                    message = task.exception?.message ?: "Login Failed"
                 }
-            }
+        }
+    }
+
+    // Sign up button action
+    val signUpAction = {
+        if (email.isEmpty() || password.isEmpty()) {
+            message = "Please fill in both fields."
+        } else {
+            auth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        message = "Signup Successful! You can now log in."
+                    } else {
+                        message = task.exception?.message ?: "Signup Failed"
+                    }
+                }
+        }
     }
 
     Column(
@@ -107,6 +124,23 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         message = "Signup Successful! You can now log in."
+                        val userId = task.result?.user?.uid ?: ""
+                        FirebaseFirestore.getInstance()
+                            .collection("users")
+                            .document(userId)
+                            .get()
+                            .addOnSuccessListener { document ->
+                                if (document.exists() && document.getString("username") != null) {
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                } else {
+                                    val intent = Intent(context, CreateUsernameActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            }
+                            .addOnFailureListener {
+                                message = "Error checking username"
+                            }
                     } else {
                         message = task.exception?.message ?: "Signup Failed"
                     }
@@ -115,10 +149,16 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
             Text("Sign Up")
         }
 
+        TextButton(onClick = {
+            val intent = Intent(context, ForgotPasswordActivity::class.java)
+            context.startActivity(intent)
+        }) {
+            Text("Forgot Password?")
+        }
+
         if (message.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(message, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
-

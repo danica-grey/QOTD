@@ -28,6 +28,13 @@
             </intent-filter>
         </activity>
 
+        <!-- PastQuestionsActivity (added in fixDaniCaryMerge branch) -->
+        <activity
+            android:name=".PastQuestionsActivity"
+            android:exported="false"
+            android:label="@string/title_activity_past_questions"
+            android:theme="@style/Theme.QOTD" />
+
         <!-- LoginActivity -->
         <activity
             android:name=".LoginActivity"
@@ -44,6 +51,13 @@
         <activity android:name=".UserAnswersActivity" />
         <activity android:name=".SettingsActivity" />
         <activity android:name=".AccountSettingsActivity" />
+        <activity android:name=".CreateUsernameActivity" />
+        <activity android:name=".AddFriendActivity" />
+        <!-- ForgotPasswordActivity (added in develop branch) -->
+        <activity
+            android:name=".ForgotPasswordActivity"
+            android:exported="true"
+            android:theme="@style/Theme.QOTD" />
 
     </application>
 

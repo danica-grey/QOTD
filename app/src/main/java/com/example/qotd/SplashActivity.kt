@@ -6,14 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
@@ -41,7 +39,7 @@ class SplashActivity : ComponentActivity() {
             val db = FirebaseFirestore.getInstance()
             val userRef = db.collection("users").document(userId)
 
-            userRef.get().addOnSuccessListener { document ->
+            userRef.get().addOnSuccessListener { document ->/* disable disabling back button for now
                 val answeredToday = document.getBoolean("answeredToday") ?: false
                 val lastAnsweredDate = document.getString("lastAnsweredDate")
                 val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -52,7 +50,9 @@ class SplashActivity : ComponentActivity() {
                 } else {
                     // Not answered yet, go to QOTD screen
                     startActivity(Intent(this, MainActivity::class.java))
-                }
+                }*/
+
+                startActivity(Intent(this, MainActivity::class.java))
 
                 finish()
             }.addOnFailureListener {
