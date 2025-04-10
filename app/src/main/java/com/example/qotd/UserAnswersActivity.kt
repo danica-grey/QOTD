@@ -121,6 +121,7 @@ class UserAnswersActivity : ComponentActivity() {
                 }
             }
         }
+    }
 
     override fun onBackPressed() {
         super.onBackPressed()
