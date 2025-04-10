@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">QOTD</string>
+    <string name="title_activity_splash">SplashActivity</string>
+    <string name="title_activity_past_questions">PastQuestionsActivity</string>
 </resources>
