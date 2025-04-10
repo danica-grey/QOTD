@@ -27,6 +27,7 @@ import androidx.activity.addCallback
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.text.font.FontWeight
 
 class UserAnswersActivity : ComponentActivity() {
@@ -66,6 +67,15 @@ class UserAnswersActivity : ComponentActivity() {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                                     contentDescription = "Logout"
+                                )
+                            }
+                            IconButton(onClick = {
+                                val intent = Intent(this@UserAnswersActivity, SettingsActivity::class.java)
+                                startActivity(intent)
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Settings"
                                 )
                             }
                         }
