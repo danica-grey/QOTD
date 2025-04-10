@@ -46,23 +46,7 @@ fun LoginScreen(modifier: Modifier) {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     message = "Login Successful!"
-                    val userId = auth.currentUser?.uid ?: ""
-                    FirebaseFirestore.getInstance()
-                        .collection("users")
-                        .document(userId)
-                        .get()
-                        .addOnSuccessListener { document ->
-                            if (document.exists() && document.getString("username") != null) {
-                                val intent = Intent(context, MainActivity::class.java)
-                                context.startActivity(intent)
-                            } else {
-                                val intent = Intent(context, CreateUsernameActivity::class.java)
-                                context.startActivity(intent)
-                            }
-                        }
-                        .addOnFailureListener {
-                            message = "Error checking username"
-                        }
+
                 } else {
                     message = task.exception?.message ?: "Login Failed"
                 }
@@ -97,6 +81,23 @@ fun LoginScreen(modifier: Modifier) {
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         message = "Signup Successful! You can now log in."
+                        val userId = task.result?.user?.uid ?: ""
+                        FirebaseFirestore.getInstance()
+                            .collection("users")
+                            .document(userId)
+                            .get()
+                            .addOnSuccessListener { document ->
+                                if (document.exists() && document.getString("username") != null) {
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                } else {
+                                    val intent = Intent(context, CreateUsernameActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                            }
+                            .addOnFailureListener {
+                                message = "Error checking username"
+                            }
                     } else {
                         message = task.exception?.message ?: "Signup Failed"
                     }
