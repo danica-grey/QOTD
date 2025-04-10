@@ -36,12 +36,6 @@ class MainActivity : ComponentActivity() {
 
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-        // If the user came from the answer screen, don't redirect to the answer screen again
-        if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
-            // Check if the user has already answered for today
-            checkIfAnsweredToday(currentUserId)
-        }
-
         setContent {
             QOTDTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -161,9 +155,11 @@ fun QuestionAnswerScreen(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                 contentDescription = if (isUserSignedIn) "Logout" else "Login",
-                modifier = Modifier.graphicsLayer(
-                    rotationZ = 180f // Rotate the icon 180 degrees to make it point left
-                )
+                modifier = Modifier
+                    .graphicsLayer(
+                        rotationZ = 180f // Rotate the icon 180 degrees to make it point left
+                    )
+                    .size(30.dp)
             )
         }
 
