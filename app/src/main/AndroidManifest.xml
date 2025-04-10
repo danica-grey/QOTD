@@ -27,7 +27,7 @@
             </intent-filter>
         </activity>
 
-        <!-- PastQuestionsActivity -->
+        <!-- PastQuestionsActivity (added in fixDaniCaryMerge branch) -->
         <activity
             android:name=".PastQuestionsActivity"
             android:exported="false"
@@ -49,7 +49,7 @@
         <activity android:name=".ReplaceQuestionActivity" />
         <activity android:name=".UserAnswersActivity" />
 
-        <!-- ForgotPasswordActivity -->
+        <!-- ForgotPasswordActivity (added in develop branch) -->
         <activity
             android:name=".ForgotPasswordActivity"
             android:exported="true"

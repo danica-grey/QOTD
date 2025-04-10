@@ -15,8 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
-import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
+import com.google.firebase.firestore.FirebaseFirestore
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,10 +87,10 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
         } else {
             auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener { task ->
-                    message = if (task.isSuccessful) {
-                        "Signup Successful! You can now log in."
+                    if (task.isSuccessful) {
+                        message = "Signup Successful! You can now log in."
                     } else {
-                        task.exception?.message ?: "Signup Failed"
+                        message = task.exception?.message ?: "Signup Failed"
                     }
                 }
         }

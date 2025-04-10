@@ -36,6 +36,12 @@ class MainActivity : ComponentActivity() {
 
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
+        // If the user came from the answer screen, don't redirect to the answer screen again
+        if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
+            // Check if the user has already answered for today
+            checkIfAnsweredToday(currentUserId)
+        }
+
         setContent {
             QOTDTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
@@ -55,7 +61,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -77,7 +82,7 @@ class MainActivity : ComponentActivity() {
                                 scope = scope,
                                 snackbarHostState = snackbarHostState,
                                 answeredToday = answeredToday,
-                                setAnsweredToday = { answeredToday = it } // this lets the child modify the parent's state
+                                setAnsweredToday = { answeredToday = it }
                             )
                         }
                     }
@@ -85,6 +90,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Reset the flag after the user has entered the main screen
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
 }
@@ -102,6 +108,7 @@ fun QuestionAnswerScreen(
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val isUserSignedIn = currentUserId.isNotEmpty()
 
+    // Function to fetch the daily question
     fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -127,29 +134,36 @@ fun QuestionAnswerScreen(
         }
     }
 
+    // Fetch question when the screen is first composed
     LaunchedEffect(Unit) {
         fetchQuestionOfTheDay()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // Conditionally show the Login button based on user sign-in status
         IconButton(
             onClick = {
                 if (isUserSignedIn) {
+                    // Logout
                     FirebaseAuth.getInstance().signOut()
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
+                } else {
+                    // Login
+                    val intent = Intent(context, LoginActivity::class.java)
+                    context.startActivity(intent)
                 }
-                val intent = Intent(context, LoginActivity::class.java)
-                context.startActivity(intent)
             },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(top = 16.dp, start = 8.dp) // Increase padding from start to move left
+                .padding(top = 16.dp, start = 16.dp)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                 contentDescription = if (isUserSignedIn) "Logout" else "Login",
-                modifier = Modifier
-                    .graphicsLayer(rotationZ = 180f)
-                    .size(28.dp) // Increase size of the icon
+                modifier = Modifier.graphicsLayer(
+                    rotationZ = 180f // Rotate the icon 180 degrees to make it point left
+                )
             )
         }
 
@@ -204,7 +218,6 @@ fun QuestionAnswerScreen(
                                         context.startActivity(intent)
                                     }
                                 }
-
                             }
                         },
                         modifier = Modifier.height(52.dp)

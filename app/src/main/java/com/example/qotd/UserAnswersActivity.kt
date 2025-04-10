@@ -19,16 +19,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.foundation.Image
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 
 class UserAnswersActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -37,7 +40,6 @@ class UserAnswersActivity : ComponentActivity() {
 
         val extras = intent.extras
         val questionDate = extras?.getString("questionDate")?.let { LocalDate.parse(it) } ?: LocalDate.now()
-        val questionText = extras?.getString("questionText")
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
 
         setContent {
@@ -110,7 +112,7 @@ class UserAnswersActivity : ComponentActivity() {
 
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
-        finish()
+        finish()  // Close the current activity to prevent going back
     }
 }
 
