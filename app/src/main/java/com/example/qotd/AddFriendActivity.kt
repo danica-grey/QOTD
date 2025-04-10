@@ -70,7 +70,6 @@ fun AddFriendScreen(
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val db = FirebaseFirestore.getInstance()
 
-    // Function to load friends list (now consistently named)
     val loadFriends = {
         scope.launch {
             try {
