@@ -1,47 +1,117 @@
 package com.example.qotd
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.foundation.Image
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 class UserAnswersActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val questionDate = LocalDate.now() // Internal date format for Firebase (yyyy-MM-dd)
-        val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) // Display format (March 26, 2025)
+        val extras = intent.extras
+        val questionDate = extras?.getString("questionDate")?.let { LocalDate.parse(it) } ?: LocalDate.now()
+        val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
 
         setContent {
+            val context = LocalContext.current
+
             QOTDTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(
+                    topBar = {
+                        SmallTopAppBar(
+                            title = {
+                                Text(
+                                    text = displayDate,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                    maxLines = 1
+                                )
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    val intent = Intent(context, MainActivity::class.java)
+                                    context.startActivity(intent)
+                                    if (context is ComponentActivity) context.finish()
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.ArrowBack,
+                                        contentDescription = "Back"
+                                    )
+                                }
+                            },
+                            actions = {
+                                IconButton(
+                                    onClick = {
+                                        val intent = Intent(context, PastQuestionsActivity::class.java)
+                                        context.startActivity(intent)
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.past_icon),
+                                        contentDescription = "Past QOTDs",
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .graphicsLayer { rotationY = 180f } // flip so facing right
+                                            .offset(x = (4).dp) // Shift left safely
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.smallTopAppBarColors()
+                        )
+                    },
+                    modifier = Modifier.fillMaxSize()
+                ) { innerPadding ->
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
                         verticalArrangement = Arrangement.Top
                     ) {
-                        UserAnswersScreen(questionDate, displayDate) // Pass both dates
+                        UserAnswersScreen(questionDate, displayDate)
                     }
                 }
             }
         }
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
+        sharedPreferences.edit().putBoolean("cameFromAnswerScreen", true).apply()
+
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()  // Close the current activity to prevent going back
     }
 }
 
@@ -52,36 +122,44 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
     var questionOfTheDay by remember { mutableStateOf("Loading question...") }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
 
-    // Fetch the question of the day
     LaunchedEffect(questionDate) {
         firestore.collection("dailyQuestions")
-            .document(questionDate.toString()) // Use the internal date format for Firebase
+            .document(questionDate.toString())
             .get()
             .addOnSuccessListener { document ->
                 questionOfTheDay = document.getString("question") ?: "No question available for today."
             }
 
         firestore.collection("dailyAnswer")
-            .whereEqualTo("questionDate", questionDate.toString()) // Use the internal date format for Firebase
+            .whereEqualTo("questionDate", questionDate.toString())
             .addSnapshotListener { snapshot, _ ->
                 snapshot?.let {
                     answers = it.documents.mapNotNull { doc ->
                         val data = doc.data
                         if (data != null) Pair(doc.id, data) else null
+                    }.let { list ->
+                        val (userAnswers, otherAnswers) = list.partition { it.second["userId"] == currentUserId }
+
+                        val sortedOthers = otherAnswers.sortedByDescending {
+                            val timeStr = it.second["timestamp"] as? String
+                            try {
+                                LocalDateTime.parse(timeStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                            } catch (e: Exception) {
+                                LocalDateTime.MIN
+                            }
+                        }
+
+                        userAnswers + sortedOthers
                     }
                 }
             }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        // Display the formatted date and question of the day at the top
-        Text(displayDate, style = MaterialTheme.typography.bodyLarge)
-        Spacer(modifier = Modifier.height(8.dp))
         Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Display the answers
         LazyColumn {
             items(answers.size) { index ->
                 val (answerId, answer) = answers[index]
@@ -94,29 +172,69 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                 var showComments by remember { mutableStateOf(false) }
                 var newComment by remember { mutableStateOf("") }
 
+                val replyText = when (commentsList.size) {
+                    0 -> "Reply"
+                    1 -> "1 Reply"
+                    else -> "${commentsList.size} Replies"
+                }
+
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(8.dp),
                     elevation = CardDefaults.cardElevation(4.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(answerText, style = MaterialTheme.typography.bodyLarge)
+
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            if (answer["userId"] == currentUserId) {
+                                Text(
+                                    text = "Your Answer:",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+
+                            Text(
+                                text = answerText,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(top = 5.dp)
+                            )
+                        }
+
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { likeAnswer(answerId, currentUserId) }) {
                                 Icon(
                                     imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Like"
+                                    contentDescription = "Like",
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             }
-                            Text("${likesList.size} Likes")
+                            Text(
+                                "${likesList.size} Likes",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            )
 
                             Spacer(modifier = Modifier.width(16.dp))
 
-                            Button(onClick = { showComments = !showComments }) {
-                                Text(if (showComments) "Hide Comments" else "Show Comments")
+                            if (commentsList.isNotEmpty()) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Dropdown",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                             }
+
+                            Text(
+                                text = replyText,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .clickable { showComments = !showComments }
+                                    .padding(4.dp),
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                            )
                         }
 
                         if (showComments) {
@@ -147,7 +265,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                                 },
                                 modifier = Modifier.padding(top = 8.dp)
                             ) {
-                                Text("Post Comment")
+                                Text("Reply")
                             }
                         }
                     }
