@@ -31,6 +31,15 @@ import androidx.compose.foundation.Image
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.text.font.FontWeight
+
+
 
 class UserAnswersActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +63,7 @@ class UserAnswersActivity : ComponentActivity() {
                                     style = MaterialTheme.typography.titleLarge,
                                     modifier = Modifier.padding(start = 8.dp),
                                     maxLines = 1
-                                )
+                                    )
                             },
                             navigationIcon = {
                                 IconButton(onClick = {
@@ -75,14 +84,24 @@ class UserAnswersActivity : ComponentActivity() {
                                         context.startActivity(intent)
                                     },
                                     modifier = Modifier.size(48.dp)
-                                ) {
+                                 ) {
                                     Image(
-                                        painter = painterResource(id = R.drawable.past_icon),
-                                        contentDescription = "Past QOTDs",
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .graphicsLayer { rotationY = 180f } // flip so facing right
-                                            .offset(x = (4).dp) // Shift left safely
+                                          painter = painterResource(id = R.drawable.past_icon),
+                                          contentDescription = "Past QOTDs",
+                                          modifier = Modifier
+                                              .size(28.dp)
+                                              .graphicsLayer { rotationY = 180f }
+                                              .offset(x = 4.dp)
+                                    )
+                                }
+
+                                IconButton(onClick = {
+                                    val intent = Intent(context, SettingsActivity::class.java)
+                                    context.startActivity(intent)
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings"
                                     )
                                 }
                             },
@@ -90,19 +109,18 @@ class UserAnswersActivity : ComponentActivity() {
                         )
                     },
                     modifier = Modifier.fillMaxSize()
-                ) { innerPadding ->
+                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
                         verticalArrangement = Arrangement.Top
                     ) {
-                        UserAnswersScreen(questionDate, displayDate)
-                    }
+                      UserAnswersScreen(questionDate, displayDate)
+                   }
                 }
             }
         }
-    }
 
     override fun onBackPressed() {
         super.onBackPressed()
