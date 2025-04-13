@@ -7,12 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -27,19 +26,20 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
         val cameFromAnswerScreen = sharedPreferences.getBoolean("cameFromAnswerScreen", false)
-
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
         setContent {
             QOTDTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+                val context = LocalContext.current
                 var answeredToday by remember { mutableStateOf(false) }
 
                 LaunchedEffect(currentUserId) {
@@ -49,14 +49,47 @@ class MainActivity : ComponentActivity() {
 
                         try {
                             val document = userRef.get().await()
-                            answeredToday = document.getBoolean("answeredToday") ?: false
+                            val lastAnsweredDate = document.getString("lastAnsweredDate")
+                            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+                            if (lastAnsweredDate != today) {
+                                userRef.set(
+                                    mapOf("answeredToday" to false),
+                                    SetOptions.merge()
+                                ).await()
+                                answeredToday = false
+                            } else {
+                                answeredToday = document.getBoolean("answeredToday") ?: false
+                            }
                         } catch (e: Exception) {
-                            // Optional: handle error
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Unable to check your answer status. Please try again later.")
+                            }
+
+                            answeredToday = false
                         }
                     }
                 }
 
                 Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = {},
+                            actions = {
+                                IconButton(onClick = {
+                                    val intent = Intent(context, SettingsActivity::class.java)
+                                    context.startActivity(intent)
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Settings",
+                                        modifier = Modifier.size(32.dp)
+
+                                    )
+                                }
+                            }
+                        )
+                    },
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
                 ) { innerPadding ->
@@ -84,7 +117,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Reset the flag after the user has entered the main screen
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
 }
@@ -100,9 +132,7 @@ fun QuestionAnswerScreen(
     var userAnswer by remember { mutableStateOf("") }
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val isUserSignedIn = currentUserId.isNotEmpty()
 
-    // Function to fetch the daily question
     fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -128,48 +158,20 @@ fun QuestionAnswerScreen(
         }
     }
 
-    // Fetch question when the screen is first composed
     LaunchedEffect(Unit) {
         fetchQuestionOfTheDay()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Conditionally show the Login button based on user sign-in status
-        IconButton(
-            onClick = {
-                if (isUserSignedIn) {
-                    // Logout
-                    FirebaseAuth.getInstance().signOut()
-                    val intent = Intent(context, LoginActivity::class.java)
-                    context.startActivity(intent)
-                } else {
-                    // Login
-                    val intent = Intent(context, LoginActivity::class.java)
-                    context.startActivity(intent)
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 16.dp, start = 16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = if (isUserSignedIn) "Logout" else "Login",
-                modifier = Modifier
-                    .graphicsLayer(
-                        rotationZ = 180f // Rotate the icon 180 degrees to make it point left
-                    )
-                    .size(30.dp)
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .offset(y = (-48).dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        )
+ {
             Text(
                 text = question,
                 style = MaterialTheme.typography.headlineMedium,
@@ -234,23 +236,6 @@ fun QuestionAnswerScreen(
                 ) {
                     Text("View Answers", fontSize = 20.sp)
                 }
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            contentAlignment = Alignment.TopEnd
-        ) {
-            Button(
-                onClick = {
-                    val intent = Intent(context, AddFriendActivity::class.java)
-                    context.startActivity(intent)
-                },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-            ) {
-                Text("Friends List")
             }
         }
     }
