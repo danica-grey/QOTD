@@ -23,6 +23,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Settings
 
 class PastQuestionsActivity : ComponentActivity() {
 
@@ -44,11 +45,13 @@ class PastQuestionsActivity : ComponentActivity() {
                             },
                             navigationIcon = {
                                 IconButton(onClick = {
-                                    // Use finish() to close the current activity
-                                    finish() // This will return to the previous screen
+                                    finish()
                                 }) {
                                     Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
                                 }
+                            },
+                            actions = {
+                                SettingsButton()
                             }
                         )
                     }
@@ -66,10 +69,24 @@ class PastQuestionsActivity : ComponentActivity() {
     }
 
     override fun onBackPressed() {
-        // Manually handle back press
         super.onBackPressed()
-        // Ensure returning to the previous screen or closing the activity
         finish()
+    }
+}
+
+@Composable
+fun SettingsButton() {
+    val context = LocalContext.current
+
+    IconButton(onClick = {
+        val intent = Intent(context, SettingsActivity::class.java)
+        context.startActivity(intent)
+    }) {
+        Icon(
+            imageVector = Icons.Filled.Settings,
+            contentDescription = "Settings",
+            modifier = Modifier.size(32.dp)
+        )
     }
 }
 

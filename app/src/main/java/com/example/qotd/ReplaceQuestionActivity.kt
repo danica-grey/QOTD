@@ -35,7 +35,7 @@ fun ReplaceQuestionAnswerScreen(modifier: Modifier = Modifier) {
     val userAnswerPrompt = "Your Answer:"
     var userAnswer by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
-    var isSubmitted by remember { mutableStateOf(false) } // Track if the form has been submitted
+    var isSubmitted by remember { mutableStateOf(false) } 
 
     Column(
         modifier = modifier
@@ -52,7 +52,7 @@ fun ReplaceQuestionAnswerScreen(modifier: Modifier = Modifier) {
             onValueChange = { userQuestion = it },
             label = { Text("Let's hear it!") },
             modifier = Modifier.fillMaxWidth(),
-            isError = isSubmitted && userQuestion.isBlank(), // Show error if submitted and blank
+            isError = isSubmitted && userQuestion.isBlank(), 
             singleLine = true
         )
 
@@ -67,7 +67,7 @@ fun ReplaceQuestionAnswerScreen(modifier: Modifier = Modifier) {
             onValueChange = { userAnswer = it },
             label = { Text("Your turn!") },
             modifier = Modifier.fillMaxWidth(),
-            isError = isSubmitted && userAnswer.isBlank(), // Show error if submitted and blank
+            isError = isSubmitted && userAnswer.isBlank(),
             singleLine = true
         )
 
@@ -79,7 +79,7 @@ fun ReplaceQuestionAnswerScreen(modifier: Modifier = Modifier) {
         ) {
             Button(
                 onClick = {
-                    isSubmitted = true // Set flag to true when submitting
+                    isSubmitted = true 
                     submitQuestionPlusAnswer(userQuestion, userAnswer) { status ->
                         message = status
                         userAnswer = ""
