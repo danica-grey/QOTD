@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -19,8 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import com.example.qotd.ui.theme.QOTDTheme
@@ -28,14 +25,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import androidx.compose.foundation.Image
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.addCallback
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Settings
 
 
@@ -72,7 +65,7 @@ class UserAnswersActivity : ComponentActivity() {
                                     if (context is ComponentActivity) context.finish()
                                 }) {
                                     Icon(
-                                        imageVector = Icons.Filled.ArrowBack,
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                         contentDescription = "Back"
                                     )
                                 }
@@ -101,7 +94,8 @@ class UserAnswersActivity : ComponentActivity() {
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.Settings,
-                                        contentDescription = "Settings"
+                                        contentDescription = "Settings",
+                                        modifier = Modifier.size(32.dp)
                                     )
                                 }
                             },
