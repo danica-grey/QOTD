@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,7 +10,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,7 +66,6 @@ fun AddFriendScreen(
     scope: CoroutineScope,
     snackbarHostState: SnackbarHostState
 ) {
-    // State variables
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
     var searchResults by remember { mutableStateOf(emptyList<FriendSearchResult>()) }
     var friendsList by remember { mutableStateOf(emptyList<FriendSearchResult>()) }
@@ -108,12 +111,10 @@ fun AddFriendScreen(
         }
     }
 
-    // Load friends on initial composition
     LaunchedEffect(Unit) {
         loadFriends()
     }
 
-    // Search users function
     fun searchUsers() {
         if (searchQuery.text.isEmpty()) {
             searchResults = emptyList()
@@ -154,7 +155,6 @@ fun AddFriendScreen(
         }
     }
 
-    // Add friend function
     fun addFriend(friendId: String, friendUsername: String) {
         scope.launch {
             try {
@@ -170,8 +170,8 @@ fun AddFriendScreen(
                 scope.launch {
                     snackbarHostState.showSnackbar("Added $friendUsername to friends!")
                 }
-                loadFriends() // Refresh friends list
-                searchUsers() // Refresh search results
+                loadFriends()
+                searchUsers()
             } catch (e: Exception) {
                 scope.launch {
                     snackbarHostState.showSnackbar("Error adding friend: ${e.message}")
@@ -182,6 +182,8 @@ fun AddFriendScreen(
         }
     }
 
+    val context = LocalContext.current
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -189,7 +191,53 @@ fun AddFriendScreen(
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Search bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    if (context is ComponentActivity) {
+                        context.finish()
+                    }
+                },
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+            
+            Icon(
+                imageVector = Icons.Default.Face,
+                contentDescription = "Friends",
+                modifier = Modifier
+                    .size(32.dp)
+                    .padding(end = 8.dp)
+            )
+            
+            Text(
+                text = "Friends",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f) 
+            )
+
+            // Settings Button
+            IconButton(onClick = {
+                val intent = Intent(context, SettingsActivity::class.java)
+                context.startActivity(intent)
+            }) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+        
         OutlinedTextField(
             value = searchQuery,
             onValueChange = {
@@ -209,7 +257,6 @@ fun AddFriendScreen(
             CircularProgressIndicator(modifier = Modifier.padding(16.dp))
         }
 
-        // Friends list
         if (friendsList.isNotEmpty()) {
             Text(
                 text = "Your Friends",
@@ -233,7 +280,6 @@ fun AddFriendScreen(
             Divider(modifier = Modifier.padding(vertical = 8.dp))
         }
 
-        // Search results
         if (searchResults.isNotEmpty()) {
             Text(
                 text = "Search Results",
@@ -256,6 +302,7 @@ fun AddFriendScreen(
         }
     }
 }
+
 
 @Composable
 fun FriendItem(
