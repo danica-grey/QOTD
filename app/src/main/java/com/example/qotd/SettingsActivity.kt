@@ -70,7 +70,7 @@ fun SettingsScreen() {
 
     Scaffold(
         topBar = {
-            SmallTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
                         text = "Settings",

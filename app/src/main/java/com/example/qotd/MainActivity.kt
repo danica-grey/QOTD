@@ -16,14 +16,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qotd.ui.theme.QOTDTheme
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.QuestionAnswer
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -72,26 +80,11 @@ class MainActivity : ComponentActivity() {
                 }
 
                 Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = {},
-                            actions = {
-                                IconButton(onClick = {
-                                    val intent = Intent(context, SettingsActivity::class.java)
-                                    context.startActivity(intent)
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Settings,
-                                        contentDescription = "Settings",
-                                        modifier = Modifier.size(32.dp)
-
-                                    )
-                                }
-                            }
-                        )
-                    },
                     modifier = Modifier.fillMaxSize(),
-                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    bottomBar = {
+                        MyBottomNavigationBar()
+                    }
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
@@ -118,6 +111,68 @@ class MainActivity : ComponentActivity() {
         }
 
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
+    }
+}
+
+@Composable
+fun MyBottomNavigationBar() {
+    val context = LocalContext.current
+
+    BottomAppBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(88.dp),
+        containerColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                context.startActivity(Intent(context, MainActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.Home,
+                    contentDescription = "Home",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                context.startActivity(Intent(context, AddFriendActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.Group,
+                    contentDescription = "Friends",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                context.startActivity(Intent(context, UserAnswersActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.List,
+                    contentDescription = "Answers",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                context.startActivity(Intent(context, SettingsActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+        }
     }
 }
 
@@ -170,8 +225,7 @@ fun QuestionAnswerScreen(
                 .offset(y = (-48).dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
-        )
- {
+        ) {
             Text(
                 text = question,
                 style = MaterialTheme.typography.headlineMedium,

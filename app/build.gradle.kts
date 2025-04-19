@@ -68,4 +68,17 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.androidx.work)
     implementation(libs.material) // for navbar
+    implementation(libs.material3) // for BottomNavigation, Material 3 components
+    implementation("androidx.compose.material:material:1.3.1") // Add this if missing
+    implementation("androidx.compose.ui:ui:1.3.1") // Ensure this is also present
+    implementation("androidx.compose.material:material-icons-extended:1.3.1") // If using icons in BottomNavigation
+    implementation(platform("androidx.compose:compose-bom:2023.1.0")) // The BOM (Bill of Materials) for Compose
+    implementation("androidx.compose.material:material") // For Material Components
+    implementation("androidx.compose.ui:ui") // For UI components
+    implementation("androidx.compose.foundation:foundation") // For other foundation components
+    implementation("androidx.compose.runtime:runtime") // For Compose runtime
+    implementation("androidx.compose.material3:material3:1.0.0") // Ensure this is included
+    implementation("androidx.compose.ui:ui:1.3.1")
+    implementation("androidx.compose.foundation:foundation:1.3.1")
+    implementation("androidx.compose.runtime:runtime:1.3.1")
 }

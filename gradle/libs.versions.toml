@@ -41,6 +41,8 @@ androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscree
 androidx-work = { group = "androidx.work", name = "work-runtime-ktx", version = "2.10.0" }
 androidx-storage = { group = "androidx.test.services", name = "storage", version.ref = "storage" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
+material3 = "androidx.compose.material3:material3:1.3.2"
+
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

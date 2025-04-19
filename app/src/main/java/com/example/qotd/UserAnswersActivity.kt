@@ -49,7 +49,7 @@ class UserAnswersActivity : ComponentActivity() {
             QOTDTheme {
                 Scaffold(
                     topBar = {
-                        SmallTopAppBar(
+                        TopAppBar(
                             title = {
                                 Text(
                                     text = displayDate,
@@ -87,19 +87,8 @@ class UserAnswersActivity : ComponentActivity() {
                                               .offset(x = 4.dp)
                                     )
                                 }
-
-                                IconButton(onClick = {
-                                    val intent = Intent(context, SettingsActivity::class.java)
-                                    context.startActivity(intent)
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Settings,
-                                        contentDescription = "Settings",
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
                             },
-                            colors = TopAppBarDefaults.smallTopAppBarColors()
+                            colors = TopAppBarDefaults.topAppBarColors()
                         )
                     },
                     modifier = Modifier.fillMaxSize()

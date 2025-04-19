@@ -35,7 +35,7 @@ class PastQuestionsActivity : ComponentActivity() {
             QOTDTheme {
                 Scaffold(
                     topBar = {
-                        SmallTopAppBar(
+                        TopAppBar(
                             title = {
                                 Text(
                                     text = "Past Questions",

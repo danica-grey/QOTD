@@ -8,4 +8,5 @@
     <string name="people">People</string>
     <string name="profile">Profile</string>
     <string name="question">Question</string>
+    <string name="back_to_main">Back to Main</string>
 </resources>
