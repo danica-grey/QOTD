@@ -273,6 +273,19 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                     }
                 }
             }
+
+            if (answers.isEmpty()) {
+                item {
+                    Text(
+                        text = "No answers yet!",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
         }
     }
 }
