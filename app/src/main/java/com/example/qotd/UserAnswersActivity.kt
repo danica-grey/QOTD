@@ -281,7 +281,8 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(32.dp),
+                            .padding(start = 0.dp)  // Ensure it's aligned to the start
+                            .padding(top = 32.dp),  // You can adjust the top padding if needed
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }

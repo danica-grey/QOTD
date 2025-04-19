@@ -235,7 +235,7 @@ fun AddFriendScreen(
                 searchQuery = it
                 searchUsers()
             },
-            label = { Text("Search by username") },
+            label = { Text("Search by username...") },
             trailingIcon = {
                 Icon(Icons.Default.Search, contentDescription = "Search")
             },
