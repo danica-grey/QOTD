@@ -203,14 +203,17 @@ fun AddFriendScreen(
                         context.finish()
                     }
                 },
-                modifier = Modifier.padding(end = 8.dp)
+                modifier = Modifier
+                    .size(40.dp)
+                    .offset(x = (-8).dp) // Shift 8dp to the left
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Back"
+                    contentDescription = "Back",
+                    modifier = Modifier.size(24.dp)
                 )
             }
-            
+
             Icon(
                 imageVector = Icons.Default.Face,
                 contentDescription = "Friends",
@@ -224,18 +227,6 @@ fun AddFriendScreen(
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.weight(1f) 
             )
-
-            // Settings Button
-            IconButton(onClick = {
-                val intent = Intent(context, SettingsActivity::class.java)
-                context.startActivity(intent)
-            }) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    modifier = Modifier.size(32.dp)
-                )
-            }
         }
         
         OutlinedTextField(
