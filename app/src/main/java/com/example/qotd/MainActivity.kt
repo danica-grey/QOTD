@@ -107,6 +107,30 @@ class MainActivity : ComponentActivity() {
 
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
+
+    // Override onResume to check the answer status when coming back to the main screen
+    override fun onResume() {
+        super.onResume()
+
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        if (currentUserId.isNotEmpty()) {
+            val db = FirebaseFirestore.getInstance()
+            val userRef = db.collection("users").document(currentUserId)
+
+            // Fetch the latest answer status from Firestore
+            userRef.get().addOnSuccessListener { document ->
+                val lastAnsweredDate = document.getString("lastAnsweredDate")
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+                if (lastAnsweredDate != today) {
+                    userRef.set(
+                        mapOf("answeredToday" to false),
+                        SetOptions.merge()
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

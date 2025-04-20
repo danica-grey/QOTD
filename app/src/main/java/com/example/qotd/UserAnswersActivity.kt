@@ -112,12 +112,11 @@ class UserAnswersActivity : ComponentActivity() {
 
     override fun onBackPressed() {
         super.onBackPressed()
-        val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
-        sharedPreferences.edit().putBoolean("cameFromAnswerScreen", true).apply()
-
-        val intent = Intent(this, MainActivity::class.java)
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
         startActivity(intent)
-        finish()  // Close the current activity to prevent going back
+        finish() // Close the current activity to avoid going back to this one
     }
 }
 
