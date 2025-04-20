@@ -36,6 +36,10 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.sp
 
@@ -92,7 +96,8 @@ fun SettingsScreen() {
                     }
                 }
             )
-        }
+        },
+        bottomBar = { SettingsBottomNavigationBar() }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             Column(
@@ -101,38 +106,6 @@ fun SettingsScreen() {
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Friends Button
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            val intent = Intent(context, AddFriendActivity::class.java)
-                            context.startActivity(intent)
-                        }
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Face,
-                            contentDescription = "Friends",
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            "Friends",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp)
-                        )
-                    }
-                    Text(
-                        text = ">",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.size(24.dp)
-                    )
-
-                }
-
                 // Notifications Section
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
@@ -398,6 +371,68 @@ fun RequestNotificationPermissionIfNeeded() {
             val granted = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
             if (!granted) {
                 launcher.launch(permission)
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsBottomNavigationBar() {
+    val context = LocalContext.current
+
+    BottomAppBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(88.dp),
+        containerColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                context.startActivity(Intent(context, MainActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.Home,
+                    contentDescription = "Home",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                context.startActivity(Intent(context, AddFriendActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.Group,
+                    contentDescription = "Friends",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                context.startActivity(Intent(context, UserAnswersActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.List,
+                    contentDescription = "Answers",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                // (we're already here, do nothing)
+            }) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     }

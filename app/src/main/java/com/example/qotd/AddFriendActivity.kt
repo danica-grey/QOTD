@@ -12,6 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -47,9 +50,10 @@ class AddFriendActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    bottomBar = { FriendBottomNavigationBar() }
                 ) { innerPadding ->
-                    AddFriendScreen(
+                AddFriendScreen(
                         modifier = Modifier.padding(innerPadding),
                         scope = scope,
                         snackbarHostState = snackbarHostState
@@ -323,6 +327,68 @@ fun FriendItem(
                         Icon(Icons.Default.Add, contentDescription = "Add friend")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun FriendBottomNavigationBar() {
+    val context = LocalContext.current
+
+    BottomAppBar(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(88.dp),
+        containerColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                context.startActivity(Intent(context, MainActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.Home,
+                    contentDescription = "Home",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                // (we're already here, do nothing)
+            }) {
+                Icon(
+                    Icons.Default.Group,
+                    contentDescription = "Friends",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                context.startActivity(Intent(context, UserAnswersActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.List,
+                    contentDescription = "Answers",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+
+            IconButton(onClick = {
+                context.startActivity(Intent(context, SettingsActivity::class.java))
+            }) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
             }
         }
     }
