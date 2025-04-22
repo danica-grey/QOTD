@@ -34,9 +34,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.icons.filled.Settings
 
-
-
-
 class UserAnswersActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,7 +56,7 @@ class UserAnswersActivity : ComponentActivity() {
                                     style = MaterialTheme.typography.titleLarge,
                                     modifier = Modifier.padding(start = 8.dp),
                                     maxLines = 1
-                                    )
+                                )
                             },
                             navigationIcon = {
                                 IconButton(onClick = {
@@ -80,14 +77,14 @@ class UserAnswersActivity : ComponentActivity() {
                                         context.startActivity(intent)
                                     },
                                     modifier = Modifier.size(48.dp)
-                                 ) {
+                                ) {
                                     Image(
-                                          painter = painterResource(id = R.drawable.past_icon),
-                                          contentDescription = "Past QOTDs",
-                                          modifier = Modifier
-                                              .size(28.dp)
-                                              .graphicsLayer { rotationY = 180f }
-                                              .offset(x = 4.dp)
+                                        painter = painterResource(id = R.drawable.past_icon),
+                                        contentDescription = "Past QOTDs",
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .graphicsLayer { rotationY = 180f }
+                                            .offset(x = 4.dp)
                                     )
                                 }
                             },
@@ -96,15 +93,15 @@ class UserAnswersActivity : ComponentActivity() {
                     },
                     bottomBar = { AnswerBottomNavigationBar() },
                     modifier = Modifier.fillMaxSize()
-                 ) { innerPadding ->
+                ) { innerPadding ->
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding),
                         verticalArrangement = Arrangement.Top
                     ) {
-                      UserAnswersScreen(questionDate, displayDate)
-                   }
+                        UserAnswersScreen(questionDate, displayDate)
+                    }
                 }
             }
         }
@@ -116,7 +113,7 @@ class UserAnswersActivity : ComponentActivity() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         startActivity(intent)
-        finish() // Close the current activity to avoid going back to this one
+        finish()
     }
 }
 
@@ -126,6 +123,27 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
     var answers by remember { mutableStateOf<List<Pair<String, Map<String, Any>>>>(emptyList()) }
     var questionOfTheDay by remember { mutableStateOf("Loading question...") }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
+    var userNames by remember { mutableStateOf(mapOf<String, String>()) }
+
+    fun fetchUserName(userId: String, onSuccess: (String) -> Unit) {
+        if (userId == "UnknownUser") {
+            onSuccess("Unknown User")
+            return
+        }
+        if (userNames.containsKey(userId)) {
+            onSuccess(userNames[userId]!!)
+            return
+        }
+        firestore.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                val username = document.getString("username") ?: "User $userId"
+                userNames = userNames + (userId to username)
+                onSuccess(username)
+            }
+            .addOnFailureListener {
+                onSuccess("User $userId")
+            }
+    }
 
     LaunchedEffect(questionDate) {
         firestore.collection("dailyQuestions")
@@ -176,6 +194,13 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                 val isLiked = likesList.contains(currentUserId)
                 var showComments by remember { mutableStateOf(false) }
                 var newComment by remember { mutableStateOf("") }
+                var username by remember { mutableStateOf("Loading...") }
+
+                LaunchedEffect(answer["userId"]) {
+                    fetchUserName(answer["userId"] as? String ?: "UnknownUser") { name ->
+                        username = name
+                    }
+                }
 
                 val replyText = when (commentsList.size) {
                     0 -> "Reply"
@@ -194,6 +219,11 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                             if (answer["userId"] == currentUserId) {
                                 Text(
                                     text = "Your Answer:",
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
+                                )
+                            } else {
+                                Text(
+                                    text = "$username's Answer:",
                                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                                 )
                             }
@@ -247,9 +277,17 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                             Text("Comments:", style = MaterialTheme.typography.bodyLarge)
 
                             commentsList.forEach { comment ->
-                                val commentUser = comment["userId"]?.toString() ?: "User"
+                                val commentUserId = comment["userId"]?.toString() ?: "UnknownUser"
+                                var commentUsername by remember { mutableStateOf("Loading...") }
+
+                                LaunchedEffect(commentUserId) {
+                                    fetchUserName(commentUserId) { name ->
+                                        commentUsername = name
+                                    }
+                                }
+
                                 val commentText = comment["comment"]?.toString() ?: ""
-                                Text(text = "$commentUser: $commentText")
+                                Text(text = "$commentUsername: $commentText")
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -284,48 +322,14 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 0.dp)  // Ensure it's aligned to the start
-                            .padding(top = 32.dp),  // You can adjust the top padding if needed
+                            .padding(start = 0.dp)
+                            .padding(top = 32.dp),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
         }
     }
-}
-
-fun likeAnswer(answerId: String, userId: String) {
-    val firestore = FirebaseFirestore.getInstance()
-    val answerRef = firestore.collection("dailyAnswer").document(answerId)
-
-    firestore.runTransaction { transaction ->
-        val snapshot = transaction.get(answerRef)
-        val likesList = (snapshot.get("likes") as? List<*>)?.mapNotNull { it as? String }?.toMutableList() ?: mutableListOf()
-
-        if (!likesList.contains(userId)) {
-            likesList.add(userId)
-            transaction.update(answerRef, "likes", likesList)
-        } else {
-            likesList.remove(userId)
-            transaction.update(answerRef, "likes", likesList)
-        }
-    }
-}
-
-fun addComment(answerId: String, commentText: String) {
-    val firestore = FirebaseFirestore.getInstance()
-    val answerRef = firestore.collection("dailyAnswer").document(answerId)
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-    val currentTime = LocalDateTime.now().format(formatter)
-    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
-
-    val newComment = hashMapOf(
-        "userId" to currentUserId,
-        "comment" to commentText,
-        "timestamp" to currentTime
-    )
-
-    answerRef.update("comments", FieldValue.arrayUnion(newComment))
 }
 
 @Composable
@@ -366,7 +370,7 @@ fun AnswerBottomNavigationBar() {
             }
 
             IconButton(onClick = {
-                // (we're already here, do nothing)
+                // Current screen - do nothing
             }) {
                 Icon(
                     Icons.Default.List,
@@ -388,4 +392,38 @@ fun AnswerBottomNavigationBar() {
             }
         }
     }
+}
+
+fun likeAnswer(answerId: String, userId: String) {
+    val firestore = FirebaseFirestore.getInstance()
+    val answerRef = firestore.collection("dailyAnswer").document(answerId)
+
+    firestore.runTransaction { transaction ->
+        val snapshot = transaction.get(answerRef)
+        val likesList = (snapshot.get("likes") as? List<*>)?.mapNotNull { it as? String }?.toMutableList() ?: mutableListOf()
+
+        if (!likesList.contains(userId)) {
+            likesList.add(userId)
+            transaction.update(answerRef, "likes", likesList)
+        } else {
+            likesList.remove(userId)
+            transaction.update(answerRef, "likes", likesList)
+        }
+    }
+}
+
+fun addComment(answerId: String, commentText: String) {
+    val firestore = FirebaseFirestore.getInstance()
+    val answerRef = firestore.collection("dailyAnswer").document(answerId)
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+    val currentTime = LocalDateTime.now().format(formatter)
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
+
+    val newComment = hashMapOf(
+        "userId" to currentUserId,
+        "comment" to commentText,
+        "timestamp" to currentTime
+    )
+
+    answerRef.update("comments", FieldValue.arrayUnion(newComment))
 }
