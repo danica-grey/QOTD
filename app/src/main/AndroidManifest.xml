@@ -16,48 +16,60 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QOTD"
         tools:targetApi="31">
+
         <activity
             android:name=".ProfilePicActivity"
             android:exported="false"
             android:label="@string/title_activity_profile_pic"
             android:theme="@style/Theme.QOTD" />
+
         <!-- SplashActivity as the launch screen -->
         <activity
             android:name=".SplashActivity"
-            android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="true"
             android:label="@string/title_activity_splash"
-            android:launchMode="singleTask"
-            android:theme="@style/Theme.QOTD">
+            android:theme="@style/Theme.QOTD"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity> <!-- PastQuestionsActivity (added in fixDaniCaryMerge branch) -->
+        </activity>
+
+        <!-- PastQuestionsActivity (added in fixDaniCaryMerge branch) -->
         <activity
             android:name=".PastQuestionsActivity"
             android:exported="false"
             android:label="@string/title_activity_past_questions"
-            android:theme="@style/Theme.QOTD" /> <!-- LoginActivity -->
+            android:theme="@style/Theme.QOTD" />
+
+        <!-- LoginActivity -->
         <activity
             android:name=".LoginActivity"
             android:exported="true"
-            android:theme="@style/Theme.QOTD" /> <!-- MainActivity (QOTD screen) -->
+            android:theme="@style/Theme.QOTD" />
+
+        <!-- MainActivity (QOTD screen) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.QOTD" />
+
         <activity android:name=".ReplaceQuestionActivity" />
         <activity android:name=".UserAnswersActivity" />
         <activity android:name=".SettingsActivity" />
         <activity android:name=".AccountSettingsActivity" />
         <activity android:name=".CreateUsernameActivity" />
-        <activity android:name=".AddFriendActivity" /> <!-- ForgotPasswordActivity (added in develop branch) -->
+        <activity android:name=".AddFriendActivity" />
+        <activity android:name=".StreaksActivity" />
+
+        <!-- ForgotPasswordActivity (added in develop branch) -->
         <activity
             android:name=".ForgotPasswordActivity"
             android:exported="true"
             android:theme="@style/Theme.QOTD" />
+
         <activity
             android:name="com.canhub.cropper.CropImageActivity"
             android:theme="@style/Theme.AppCompat.Light" />

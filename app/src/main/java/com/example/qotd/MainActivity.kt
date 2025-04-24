@@ -271,6 +271,7 @@ fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
         .addOnSuccessListener {
             callback("Answer submitted.")
             markAnsweredToday(userId)
+            updateStreakAndAchievements(userId)
         }
         .addOnFailureListener {
             callback("Failed to submit answer.")
@@ -287,6 +288,37 @@ fun markAnsweredToday(userId: String) {
         .collection("users")
         .document(userId)
         .set(userAnsweredData, SetOptions.merge())
+}
+
+fun updateStreakAndAchievements(userId: String) {
+    val userRef = FirebaseFirestore.getInstance().collection("users").document(userId)
+
+    userRef.get().addOnSuccessListener { doc ->
+        val data = doc.data ?: return@addOnSuccessListener
+
+        val oldStreak = (data["streakCount"] as? Number)?.toInt() ?: 0
+        val newStreak = oldStreak + 1
+
+        val achievements = (data["achievements"] as? Map<*, *>)?.mapNotNull { (k, v) ->
+            val key = k as? String
+            val value = v as? Boolean
+            if (key != null && value != null) key to value else null
+        }?.toMap() ?: emptyMap()
+
+        val newAchievements = achievements.toMutableMap()
+
+        if (newStreak >= 3) newAchievements["streak3"] = true
+        if (newStreak >= 7) newAchievements["streak7"] = true
+        if (newStreak >= 30) newAchievements["streak30"] = true
+        if (newStreak >= 100) newAchievements["streak100"] = true
+
+        val updateData = mapOf(
+            "streakCount" to newStreak,
+            "achievements" to newAchievements
+        )
+
+        userRef.set(updateData, SetOptions.merge())
+    }
 }
 
 @Composable
