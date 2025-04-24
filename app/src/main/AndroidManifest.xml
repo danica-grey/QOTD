@@ -3,6 +3,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -13,6 +16,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.QOTD"
         tools:targetApi="31">
+
+        <activity
+            android:name=".ProfilePicActivity"
+            android:exported="false"
+            android:label="@string/title_activity_profile_pic"
+            android:theme="@style/Theme.QOTD" />
 
         <!-- SplashActivity as the launch screen -->
         <activity
@@ -53,11 +62,17 @@
         <activity android:name=".AccountSettingsActivity" />
         <activity android:name=".CreateUsernameActivity" />
         <activity android:name=".AddFriendActivity" />
+        <activity android:name=".StreaksActivity" />
+
         <!-- ForgotPasswordActivity (added in develop branch) -->
         <activity
             android:name=".ForgotPasswordActivity"
             android:exported="true"
             android:theme="@style/Theme.QOTD" />
+
+        <activity
+            android:name="com.canhub.cropper.CropImageActivity"
+            android:theme="@style/Theme.AppCompat.Light" />
 
     </application>
 
