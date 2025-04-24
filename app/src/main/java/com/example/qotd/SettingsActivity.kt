@@ -253,6 +253,31 @@ fun SettingsScreen() {
                     }
                 }
 
+                //Streaks
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            context.startActivity(Intent(context, StreaksActivity::class.java))
+                        }
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Face,
+                            contentDescription = "View Streaks",
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "View Streaks",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp)
+                        )
+                    }
+                }
+
                 // Logout Section
                 Row(
                     modifier = Modifier

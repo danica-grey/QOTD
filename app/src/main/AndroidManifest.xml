@@ -53,6 +53,7 @@
         <activity android:name=".AccountSettingsActivity" />
         <activity android:name=".CreateUsernameActivity" />
         <activity android:name=".AddFriendActivity" />
+        <activity android:name=".StreaksActivity" />
         <!-- ForgotPasswordActivity (added in develop branch) -->
         <activity
             android:name=".ForgotPasswordActivity"
