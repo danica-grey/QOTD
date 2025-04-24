@@ -9,4 +9,6 @@
     <string name="profile">Profile</string>
     <string name="question">Question</string>
     <string name="back_to_main">Back to Main</string>
+    <string name="title_activity_profile_pic">ProfilePicActivity</string>
+    <string name="title_activity_streaks">StreaksActivity</string>
 </resources>
