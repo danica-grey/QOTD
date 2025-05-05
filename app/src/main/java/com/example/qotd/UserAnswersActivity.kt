@@ -32,6 +32,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+
+private var refreshAnswersTrigger = mutableStateOf(0)
 
 class UserAnswersActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -99,31 +105,97 @@ class UserAnswersActivity : ComponentActivity() {
                             .padding(innerPadding),
                         verticalArrangement = Arrangement.Top
                     ) {
-                        UserAnswersScreen(questionDate, displayDate)
+                        UserAnswersScreen(questionDate, displayDate, refreshAnswersTrigger.value)
                     }
                 }
             }
         }
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 100 && resultCode == RESULT_OK) {
+            refreshAnswersTrigger.value += 1
         }
-        startActivity(intent)
-        finish()
     }
+
+    override fun onBackPressed() {
+        val wasNavigatedFromPastQuestions = intent.getBooleanExtra("fromPastQuestions", false)
+
+        if (wasNavigatedFromPastQuestions) {
+
+            val intent = Intent(this, PastQuestionsActivity::class.java)
+            startActivity(intent)
+        } else {
+            super.onBackPressed()
+        }
+    }
+
 }
 
 @Composable
-fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
+fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigger: Int) {
     val firestore = FirebaseFirestore.getInstance()
     var answers by remember { mutableStateOf<List<Pair<String, Map<String, Any>>>>(emptyList()) }
     var questionOfTheDay by remember { mutableStateOf("Loading question...") }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
     val userNames = remember { mutableStateMapOf<String, String>() }
     val profilePicCache = remember { mutableStateMapOf<String, String?>() }
+    var userPrivacySettings by remember { mutableStateOf<Map<String, Any>?>(null) }
+
+    val friendsList = remember { mutableStateListOf<String>() }
+    var friendsFetched by remember { mutableStateOf(false) }
+    val userPrivacyMap = remember { mutableStateMapOf<String, String>() }
+
+    fun fetchUserPrivacy(userId: String, onResult: (String) -> Unit) {
+        if (userPrivacyMap.containsKey(userId)) {
+            onResult(userPrivacyMap[userId] ?: "Public")
+            return
+        }
+
+        firestore.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                val privacy = document.getString("privacy") ?: "Public"
+                userPrivacyMap[userId] = privacy
+                onResult(privacy)
+            }
+            .addOnFailureListener {
+                userPrivacyMap[userId] = "Public"
+                onResult("Public")
+            }
+    }
+
+    fun fetchFriendsListIfNeeded(onComplete: () -> Unit) {
+        if (friendsFetched) {
+            onComplete()
+            return
+        }
+        firestore.collection("friends").document(currentUserId).get()
+            .addOnSuccessListener { document ->
+                val list = document.get("friends") as? List<*>
+                friendsList.clear()
+                friendsList.addAll(list?.filterIsInstance<String>().orEmpty())
+                friendsFetched = true
+                onComplete()
+            }
+            .addOnFailureListener {
+                friendsFetched = true
+                onComplete()
+            }
+    }
+
+    fun isUserFriendsWithOtherUser(otherUserId: String): Boolean {
+        return friendsList.contains(otherUserId)
+    }
+
+    fun fetchUserPrivacySettings(onResult: (Map<String, Any>?) -> Unit) {
+        firestore.collection("users").document(currentUserId).get()
+            .addOnSuccessListener { document ->
+                val privacySettings = document.data
+                userPrivacySettings = privacySettings
+                onResult(privacySettings)
+            }
+    }
 
     fun fetchUserNameAndPic(userId: String, onResult: (String, String?) -> Unit) {
         if (userId == "UnknownUser") {
@@ -136,48 +208,113 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
         }
         firestore.collection("users").document(userId).get()
             .addOnSuccessListener { document ->
-                val username = document.getString("username") ?: "User $userId"
-                val profilePic = document.getString("profilePicture")
-                userNames[userId] = username
-                profilePicCache[userId] = profilePic
-                onResult(username, profilePic)
+                if (document.exists()) {
+                    val username = document.getString("username") ?: "Deleted User"
+                    val profilePic = document.getString("profilePicture")
+                    userNames[userId] = username
+                    profilePicCache[userId] = profilePic
+                    onResult(username, profilePic)
+                } else {
+                    userNames[userId] = "Deleted User"
+                    profilePicCache[userId] = null
+                    onResult("Deleted User", null)
+                }
             }
             .addOnFailureListener {
-                onResult("User $userId", null)
+                onResult("Deleted User", null)
             }
     }
 
-    LaunchedEffect(questionDate) {
-        firestore.collection("dailyQuestions")
-            .document(questionDate.toString())
-            .get()
-            .addOnSuccessListener { document ->
-                questionOfTheDay = document.getString("question") ?: "No question available for today."
-            }
+    LaunchedEffect(questionDate, refreshTrigger) {
+        fetchUserPrivacySettings { privacySettings ->
+            userPrivacySettings = privacySettings
 
-        firestore.collection("dailyAnswer")
-            .whereEqualTo("questionDate", questionDate.toString())
-            .addSnapshotListener { snapshot, _ ->
-                snapshot?.let {
-                    answers = it.documents.mapNotNull { doc ->
-                        val data = doc.data
-                        if (data != null) Pair(doc.id, data) else null
-                    }.let { list ->
-                        val (userAnswers, otherAnswers) = list.partition { it.second["userId"] == currentUserId }
+            fetchFriendsListIfNeeded {
+                firestore.collection("dailyQuestions")
+                    .document(questionDate.toString())
+                    .get()
+                    .addOnSuccessListener { document ->
+                        questionOfTheDay = document.getString("question") ?: "No question available for today."
+                    }
 
-                        val sortedOthers = otherAnswers.sortedByDescending {
-                            val timeStr = it.second["timestamp"] as? String
-                            try {
-                                LocalDateTime.parse(timeStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                            } catch (e: Exception) {
-                                LocalDateTime.MIN
+                firestore.collection("dailyAnswer")
+                    .whereEqualTo("questionDate", questionDate.toString())
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val allAnswers = snapshot.documents.mapNotNull { doc ->
+                            val data = doc.data ?: return@mapNotNull null
+                            val userId = data["userId"] as? String ?: return@mapNotNull null
+                            Triple(doc.id, userId, data)
+                        }
+
+                        val filteredAnswers = mutableListOf<Pair<String, Map<String, Any>>>()
+
+                        val filteredAnswerJobs = allAnswers.map { (docId, userId, data) ->
+                            kotlinx.coroutines.GlobalScope.async {
+                                if (userId.isNullOrBlank()) {
+                                    userPrivacyMap[userId] = "Public"
+                                    return@async
+                                }
+
+                                val privacy = userPrivacyMap[userId] ?: run {
+                                    try {
+                                        val userDoc = firestore.collection("users").document(userId).get().await()
+                                        if (userDoc.exists()) {
+                                            val fetchedPrivacy = userDoc.getString("privacy") ?: "Public"
+                                            userPrivacyMap[userId] = fetchedPrivacy
+                                            fetchedPrivacy
+                                        } else {
+                                            userPrivacyMap[userId] = "Public"
+                                            "Public"
+                                        }
+                                    } catch (e: Exception) {
+                                        userPrivacyMap[userId] = "Public"
+                                        "Public"
+                                    }
+                                }
+
+                                val isFriend = isUserFriendsWithOtherUser(userId)
+                                val isSelf = userId == currentUserId
+
+                                if (privacy == "Public" || (privacy == "Private" && (isFriend || isSelf)) || privacy == "Anonymous") {
+                                    synchronized(filteredAnswers) {
+                                        filteredAnswers.add(docId to data)
+                                    }
+                                }
                             }
                         }
 
-                        userAnswers + sortedOthers
+
+                        kotlinx.coroutines.GlobalScope.launch {
+                            filteredAnswerJobs.awaitAll()
+
+                            val (userAnswers, otherAnswers) = filteredAnswers.partition { it.second["userId"] == currentUserId }
+
+                            val visibleAnswers = when {
+                                userPrivacySettings?.get("onlyShowFriendsAnswers") == true -> {
+                                    userAnswers + otherAnswers.filter { (_, data) ->
+                                        val uid = data["userId"] as? String ?: return@filter false
+                                        isUserFriendsWithOtherUser(uid)
+                                    }
+                                }
+                                else -> userAnswers + otherAnswers
+                            }
+
+                            val sortedAnswers = visibleAnswers.filterNot { it.second["userId"] == currentUserId }
+                                .sortedByDescending {
+                                    val ts = it.second["timestamp"] as? String
+                                    try {
+                                        LocalDateTime.parse(ts, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                                    } catch (e: Exception) {
+                                        LocalDateTime.MIN
+                                    }
+                                }
+
+                            answers = userAnswers + sortedAnswers
+                        }
                     }
-                }
             }
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -203,6 +340,15 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                         username = name
                         profilePicUrl = pic
                     }
+                }
+
+                val answerUserId = answer["userId"] as? String ?: "UnknownUser"
+                val privacy = userPrivacyMap[answerUserId] ?: "Public"
+                val isFriend = isUserFriendsWithOtherUser(answerUserId)
+
+                if (privacy == "Anonymous" && answerUserId != currentUserId && !isFriend) {
+                    username = "Anonymous"
+                    profilePicUrl = null
                 }
 
                 val replyText = when (commentsList.size) {
@@ -364,7 +510,8 @@ fun AnswerBottomNavigationBar() {
                 Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
             }
             IconButton(onClick = {
-                context.startActivity(Intent(context, SettingsActivity::class.java))
+                val intent = Intent(context, SettingsActivity::class.java)
+                (context as? ComponentActivity)?.startActivityForResult(intent, 100)
             }) {
                 Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
             }

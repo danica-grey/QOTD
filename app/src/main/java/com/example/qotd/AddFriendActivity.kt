@@ -43,7 +43,7 @@ import coil.compose.AsyncImage
 data class FriendSearchResult(
     val userId: String,
     val username: String,
-    val profilePicture: String? = null,      // renamed to match Firestore
+    val profilePicture: String? = null,
     val isAlreadyFriend: Boolean = false
 )
 

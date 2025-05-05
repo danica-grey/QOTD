@@ -2,6 +2,7 @@
 package com.example.qotd
 
 import android.Manifest
+import android.app.Activity.RESULT_OK
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
@@ -46,6 +47,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
 import java.util.concurrent.TimeUnit
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.outlined.Whatshot
+import androidx.compose.ui.tooling.preview.Preview
+
 
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +83,7 @@ fun SettingsScreen() {
     var username by remember { mutableStateOf("Username") }
     var selectedImage by remember { mutableStateOf<Int?>(null) }
     var savedProfilePic by remember { mutableStateOf<String?>(null) }
+
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -114,7 +120,12 @@ fun SettingsScreen() {
                     Text("Settings", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 8.dp))
                 },
                 navigationIcon = {
-                    IconButton(onClick = { if (context is ComponentActivity) context.finish() }) {
+                    IconButton(onClick = {
+                        (context as? ComponentActivity)?.apply {
+                            setResult(RESULT_OK)
+                            finish()
+                        }
+                    }) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
@@ -177,6 +188,11 @@ fun SettingsScreen() {
                 Text(username, style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp))
             }
 
+            // View Streaks
+            SettingsOption("View Streaks", Icons.Outlined.Whatshot) {
+                context.startActivity(Intent(context, StreaksActivity::class.java))
+            }
+
             // Notifications
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(
@@ -192,46 +208,257 @@ fun SettingsScreen() {
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("Notifications", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
                     }
-                    Text(if (showNotificationDetails) "˅" else ">", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (showNotificationDetails) "˅" else ">",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
 
                 AnimatedVisibility(showNotificationDetails) {
-                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Row(
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(4.dp, shape = MaterialTheme.shapes.medium)
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(start = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Text("Enable Daily Reminder", style = MaterialTheme.typography.bodyLarge)
-                            Switch(
-                                checked = remindersEnabled,
-                                onCheckedChange = {
-                                    remindersEnabled = it
-                                    prefs.edit().putBoolean("remindersEnabled", it).apply()
-                                    if (it) scheduleReminder(context, reminderHour, reminderMinute)
-                                    else cancelReminder(context)
-                                }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Enable Daily Reminder",
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp)
+                                )
+                                Switch(
+                                    checked = remindersEnabled,
+                                    onCheckedChange = {
+                                        remindersEnabled = it
+                                        prefs.edit().putBoolean("remindersEnabled", it).apply()
+                                        if (it) scheduleReminder(context, reminderHour, reminderMinute)
+                                        else cancelReminder(context)
+                                    }
+                                )
+                            }
+
+                            val formattedTime = String.format(Locale.getDefault(), "%02d:%02d", reminderHour, reminderMinute)
+                            Text(
+                                "Set Reminder Time: $formattedTime",
+                                modifier = Modifier
+                                    .clickable {
+                                        TimePickerDialog(context, { _, hour, minute ->
+                                            reminderHour = hour
+                                            reminderMinute = minute
+                                            prefs.edit().putInt("reminderHour", hour)
+                                                .putInt("reminderMinute", minute).apply()
+                                            if (remindersEnabled) {
+                                                cancelReminder(context)
+                                                scheduleReminder(context, hour, minute)
+                                            }
+                                        }, reminderHour, reminderMinute, false).show()
+                                    }
+                                    .padding(start = 4.dp),
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 18.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             )
                         }
+                    }
+                }
+            }
 
-                        val formattedTime = String.format(Locale.getDefault(), "%02d:%02d", reminderHour, reminderMinute)
-                        Text(
-                            "Set Reminder Time: $formattedTime",
-                            modifier = Modifier.clickable {
-                                TimePickerDialog(context, { _, hour, minute ->
-                                    reminderHour = hour
-                                    reminderMinute = minute
-                                    prefs.edit().putInt("reminderHour", hour).putInt("reminderMinute", minute).apply()
-                                    if (remindersEnabled) {
-                                        cancelReminder(context)
-                                        scheduleReminder(context, hour, minute)
-                                    }
-                                }, reminderHour, reminderMinute, false).show()
-                            },
-                            style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.primary)
+            // Privacy Section
+            var showPrivacyDetails by remember { mutableStateOf(false) }
+            var privacyOption by remember { mutableStateOf<String?>(null) }
+
+            LaunchedEffect(userId) {
+                userId?.let {
+                    FirebaseFirestore.getInstance().collection("users").document(it)
+                        .get()
+                        .addOnSuccessListener { document ->
+                            val fetchedPrivacy = document.getString("privacy") ?: "Public"
+                            privacyOption = fetchedPrivacy
+                            prefs.edit().putString("privacyOption", fetchedPrivacy).apply()
+                        }
+                        .addOnFailureListener {
+                            privacyOption = prefs.getString("privacyOption", "Public") ?: "Public"
+                        }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showPrivacyDetails = !showPrivacyDetails }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = "Privacy",
+                            modifier = Modifier.size(24.dp)
                         )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Privacy", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
+                    }
+                    Text(
+                        text = if (showPrivacyDetails) "˅" else ">",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Privacy Options Dropdown
+                if (privacyOption != null) {
+                    AnimatedVisibility(visible = showPrivacyDetails) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(4.dp, shape = MaterialTheme.shapes.medium)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                val options = listOf("Public", "Private", "Anonymous")
+                                val descriptions = listOf(
+                                    "Everyone can see your answers",
+                                    "Only friends can see your answers",
+                                    "Your identity is hidden from non-friends"
+                                )
+
+                                options.forEachIndexed { index, option ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                privacyOption = option
+                                                prefs.edit().putString("privacyOption", option).apply()
+                                                userId?.let {
+                                                    FirebaseFirestore.getInstance().collection("users").document(it)
+                                                        .update("privacy", option)
+                                                }
+                                            }
+                                            .padding(2.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = privacyOption == option,
+                                            onClick = {
+                                                privacyOption = option
+                                                prefs.edit().putString("privacyOption", option).apply()
+                                                userId?.let {
+                                                    FirebaseFirestore.getInstance().collection("users").document(it)
+                                                        .update("privacy", option)
+                                                }
+                                            }
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(option, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp))
+                                            Text(
+                                                descriptions[index],
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 17.sp, color = Color.Gray)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Feed Visibility Section
+            var showFeedVisibilityDetails by remember { mutableStateOf(false) }
+            var onlyShowFriendsAnswers by remember { mutableStateOf(false) }
+
+            LaunchedEffect(userId) {
+                userId?.let { uid ->
+                    val userRef = FirebaseFirestore.getInstance().collection("users").document(uid)
+                    userRef.get().addOnSuccessListener { document ->
+                        if (document.exists()) {
+                            onlyShowFriendsAnswers = document.getBoolean("onlyShowFriendsAnswers") ?: false
+                        } else {
+                            userRef.update("onlyShowFriendsAnswers", false)
+                        }
+                    }
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showFeedVisibilityDetails = !showFeedVisibilityDetails }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Filled.Visibility,
+                            contentDescription = "Feed Visibility",
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Feed Visibility", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
+                    }
+                    Text(
+                        text = if (showFeedVisibilityDetails) "˅" else ">",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Feed Visibility Options Dropdown
+                AnimatedVisibility(visible = showFeedVisibilityDetails) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(4.dp, shape = MaterialTheme.shapes.medium)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Only show my friends' answers",
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp)
+                                )
+                                Switch(
+                                    checked = onlyShowFriendsAnswers,
+                                    onCheckedChange = {
+                                        onlyShowFriendsAnswers = it
+                                        prefs.edit().putBoolean("onlyShowFriendsAnswers", it).apply()
+
+                                        userId?.let { uid ->
+                                            FirebaseFirestore.getInstance().collection("users").document(uid)
+                                                .update("onlyShowFriendsAnswers", it)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -252,10 +479,6 @@ fun SettingsScreen() {
                 }
             }
 
-            // View Streaks
-            SettingsOption("View Streaks", Icons.Default.Face) {
-                context.startActivity(Intent(context, StreaksActivity::class.java))
-            }
 
             // Logout
             SettingsOption("Logout", Icons.Default.ExitToApp, isDestructive = true) {

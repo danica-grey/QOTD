@@ -27,6 +27,9 @@ import java.util.*
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -77,6 +80,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    topBar = {
+                    },
                     bottomBar = {
                         MainBottomNavigationBar()
                     }
@@ -88,6 +93,40 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Top,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 48.dp)
+                        ) {
+                            Text(
+                                text = "QOTD",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 42.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp)
+                        ) {
+                            val dateFormatter = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
+                            val formattedDate = dateFormatter.format(Date())
+
+                            Text(
+                                text = formattedDate,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 20.sp,
+                                    color = MaterialTheme.colorScheme.secondary
+                                ),
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -108,7 +147,7 @@ class MainActivity : ComponentActivity() {
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
 
-    // Override onResume to check the answer status when coming back to the main screen
+
     override fun onResume() {
         super.onResume()
 
@@ -117,7 +156,6 @@ class MainActivity : ComponentActivity() {
             val db = FirebaseFirestore.getInstance()
             val userRef = db.collection("users").document(currentUserId)
 
-            // Fetch the latest answer status from Firestore
             userRef.get().addOnSuccessListener { document ->
                 val lastAnsweredDate = document.getString("lastAnsweredDate")
                 val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -145,27 +183,37 @@ fun QuestionAnswerScreen(
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-    fun fetchQuestionOfTheDay() {
+    suspend fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val dailyQuestionRef = db.collection("dailyQuestions").document(todayDate)
-
-        dailyQuestionRef.get().addOnSuccessListener { document ->
-            if (document.exists()) {
-                question = document.getString("question") ?: "Error loading question."
-            } else {
-                db.collection("questions").get().addOnSuccessListener { result ->
-                    val questionsList = result.documents.mapNotNull { it.getString("Question") }
-                    if (questionsList.isNotEmpty()) {
-                        val randomQuestion = questionsList.random()
-                        dailyQuestionRef.set(mapOf("question" to randomQuestion))
-                        question = randomQuestion
-                    } else {
-                        question = "No questions available."
-                    }
-                }
+        try {
+            val todaySnap = dailyQuestionRef.get().await()
+            if (todaySnap.exists()) {
+                question = todaySnap.getString("question") ?: "Error loading question."
+                return
             }
-        }.addOnFailureListener {
+
+            val allQs = db.collection("questions")
+                .get().await()
+                .documents
+                .mapNotNull { it.getString("Question") }
+
+            val usedQs = db.collection("dailyQuestions")
+                .get().await()
+                .documents
+                .mapNotNull { it.getString("question") }
+                .toSet()
+
+            val unused = allQs.filterNot { it in usedQs }
+
+            val pool = if (unused.isEmpty()) allQs else unused
+
+            val pick = pool.random()
+            dailyQuestionRef.set(mapOf("question" to pick)).await()
+            question = pick
+
+        } catch (e: Exception) {
             question = "Failed to load question."
         }
     }
@@ -179,8 +227,8 @@ fun QuestionAnswerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .offset(y = (-48).dp),
-            verticalArrangement = Arrangement.Center,
+                .offset(y = 120.dp),
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -196,7 +244,11 @@ fun QuestionAnswerScreen(
             OutlinedTextField(
                 value = userAnswer,
                 onValueChange = { userAnswer = it },
-                label = { Text("Type something...") },
+                label = {
+                    Text(
+                        if (answeredToday) "Answer Submitted!" else "Type something..."
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !answeredToday
             )
