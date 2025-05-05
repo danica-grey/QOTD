@@ -15,7 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -24,6 +23,7 @@ import java.time.format.DateTimeFormatter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
+import kotlinx.coroutines.tasks.await
 
 class PastQuestionsActivity : ComponentActivity() {
 
@@ -44,8 +44,9 @@ class PastQuestionsActivity : ComponentActivity() {
                                 )
                             },
                             navigationIcon = {
+                                // Modified back button logic to let the system handle the back stack
                                 IconButton(onClick = {
-                                    finish()
+                                    onBackPressed() // This will now properly return you to the last activity
                                 }) {
                                     Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
                                 }
@@ -68,9 +69,9 @@ class PastQuestionsActivity : ComponentActivity() {
         }
     }
 
+    // We removed the finish() here to let Android handle the back stack automatically
     override fun onBackPressed() {
-        super.onBackPressed()
-        finish()
+        super.onBackPressed() // Android will now manage the back stack and return to the previous activity
     }
 }
 
@@ -136,50 +137,94 @@ fun PastQuestionItem(pastQuestion: PastQuestion) {
     var answersCount by remember { mutableStateOf(0) }
 
     LaunchedEffect(pastQuestion) {
-        firestore.collection("dailyAnswer")
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+
+        val currentUserDoc = firestore.collection("users").document(currentUserId).get().await()
+        val onlyShowFriendsAnswers = currentUserDoc.getBoolean("onlyShowFriendsAnswers") ?: false
+        val currentUserFriends = currentUserDoc.get("friends") as? List<String> ?: emptyList()
+
+        val answersSnapshot = firestore.collection("dailyAnswer")
             .whereEqualTo("questionDate", pastQuestion.date)
             .get()
-            .addOnSuccessListener { snapshot ->
-                answersCount = snapshot.size()
+            .await()
+
+        var visibleCount = 0
+        var currentUserAnswered = false
+
+        for (doc in answersSnapshot.documents) {
+            val userId = doc.getString("userId") ?: continue
+
+            if (userId.isBlank()) continue
+
+            val userDocRef = firestore.collection("users").document(userId)
+            val userDoc = userDocRef.get().await()
+            if (!userDoc.exists()) continue
+
+            val privacy = userDoc.getString("privacy") ?: "Public"
+            val isFriend = currentUserFriends.contains(userId)
+            val isSelf = userId == currentUserId
+
+            val shouldInclude = when {
+                onlyShowFriendsAnswers && !(isFriend || isSelf) -> false
+                privacy == "Public" -> true
+                privacy == "Anonymous" -> true
+                privacy == "Private" -> isFriend || isSelf
+                else -> false
             }
+
+            if (isSelf) {
+                currentUserAnswered = true
+            }
+
+            if (shouldInclude) visibleCount++
+        }
+
+        answersCount = if (currentUserAnswered) {
+            visibleCount
+        } else {
+            visibleCount
+        }
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .clickable {
-                val intent = Intent(context, UserAnswersActivity::class.java)
-                intent.putExtra("questionDate", pastQuestion.date)
-                intent.putExtra("questionText", pastQuestion.question)
-                context.startActivity(intent)
-            },
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = formattedDate + if (isToday) " (Today)" else "",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+    if (answersCount > 0) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .clickable {
+                    val intent = Intent(context, UserAnswersActivity::class.java)
+                    intent.putExtra("questionDate", pastQuestion.date)
+                    intent.putExtra("questionText", pastQuestion.question)
+                    intent.putExtra("sourceActivity", "PastQuestionsActivity")
+                    context.startActivity(intent)
+                },
+            elevation = CardDefaults.cardElevation(4.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = formattedDate + if (isToday) " (Today)" else "",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+                    )
                 )
-            )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = if (isToday) { pastQuestion.question } else pastQuestion.question,
-                fontSize = MaterialTheme.typography.bodyLarge.fontSize * 1.2f,
-                fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Normal
-            )
+                Text(
+                    text = pastQuestion.question,
+                    fontSize = MaterialTheme.typography.bodyLarge.fontSize * 1.2f,
+                    fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Normal
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = "$answersCount Answers",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+                Text(
+                    text = "$answersCount Answers",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

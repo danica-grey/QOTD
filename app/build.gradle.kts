@@ -83,13 +83,7 @@ dependencies {
     implementation(libs.foundation)
     implementation(libs.runtime)
     implementation(libs.coil.compose)
-    // implementation(libs.android.image.cropper)
-    // implementation(libs.android.image.cropper.v440)
     implementation("com.github.CanHub:Android-Image-Cropper:4.4.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
-
-
-
-
 
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
@@ -247,10 +249,11 @@ class ProfilePicActivity : ComponentActivity() {
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
                         ) {
-                            Text("Done", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
+                            Text("Done", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 24.sp))
                         }
+
                     }
                 ) { innerPadding ->
 
@@ -319,6 +322,20 @@ class ProfilePicActivity : ComponentActivity() {
                                             }
                                     )
                                 }
+
+                                item(span = { GridItemSpan(3) }) {
+                                    Text(
+                                        text = "Icons made by Darius Dan from www.flaticon.com",
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                        ),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+
                             }
                         }
                     }
