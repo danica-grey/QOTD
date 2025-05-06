@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,6 +28,7 @@ import java.util.*
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -40,13 +42,19 @@ class MainActivity : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
         val cameFromAnswerScreen = sharedPreferences.getBoolean("cameFromAnswerScreen", false)
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
 
         setContent {
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
                 val context = LocalContext.current
                 var answeredToday by remember { mutableStateOf(false) }
+
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
 
                 LaunchedEffect(currentUserId) {
                     if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
@@ -98,15 +106,15 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .padding(top = 48.dp)
                         ) {
-                            Text(
-                                text = "QOTD",
+                            /*Text(
+                                text = "Today's Question",
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 42.sp,
                                     color = MaterialTheme.colorScheme.primary
                                 ),
                                 modifier = Modifier.align(Alignment.Center)
-                            )
+                            )*/
                         }
 
                         Box(
@@ -116,15 +124,16 @@ class MainActivity : ComponentActivity() {
                         ) {
                             val dateFormatter = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
                             val formattedDate = dateFormatter.format(Date())
+                            val textColor = if (isDarkMode) Color.White else MaterialTheme.colorScheme.secondary
 
-                            Text(
+                            /*Text(
                                 text = formattedDate,
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontSize = 20.sp,
-                                    color = MaterialTheme.colorScheme.secondary
+                                    color = textColor
                                 ),
                                 modifier = Modifier.align(Alignment.Center)
-                            )
+                            )*/
                         }
 
                         Box(
@@ -246,7 +255,7 @@ fun QuestionAnswerScreen(
                 onValueChange = { userAnswer = it },
                 label = {
                     Text(
-                        if (answeredToday) "Answer Submitted!" else "Type something..."
+                        if (answeredToday) "Answer submitted!" else "Type something..."
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -283,7 +292,7 @@ fun QuestionAnswerScreen(
                         },
                         modifier = Modifier.height(52.dp)
                     ) {
-                        Text("Submit", fontSize = 20.sp)
+                        Text("Submit", fontSize = 20.sp, color = Color.White)
                     }
                 }
             } else {
@@ -297,7 +306,7 @@ fun QuestionAnswerScreen(
                         .align(Alignment.End)
                         .height(52.dp)
                 ) {
-                    Text("View Answers", fontSize = 20.sp)
+                    Text("View Answers", fontSize = 20.sp, color = Color.White)
                 }
             }
         }
@@ -395,7 +404,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Home,
                     contentDescription = "Home",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -406,7 +415,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Group,
                     contentDescription = "Friends",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -417,7 +426,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.List,
                     contentDescription = "Answers",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -428,7 +437,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Settings,
                     contentDescription = "Settings",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
         }

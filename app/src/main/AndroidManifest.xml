@@ -27,7 +27,6 @@
         <activity
             android:name=".SplashActivity"
             android:exported="true"
-            android:label="@string/title_activity_splash"
             android:theme="@style/Theme.QOTD"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:launchMode="singleTask">

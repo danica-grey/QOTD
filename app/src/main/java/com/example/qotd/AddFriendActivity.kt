@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
@@ -39,15 +41,42 @@ data class FriendSearchResult(
 )
 
 class AddFriendActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
+
         setContent {
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
 
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
+
                 Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text("Add Friends", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 8.dp))
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    // Use 'this@AddFriendActivity' instead of 'context'
+                                    this@AddFriendActivity.apply {
+                                        setResult(RESULT_OK)
+                                        finish()
+                                    }
+                                }) {
+                                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            }
+                        )
+                    },
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                     bottomBar = { FriendBottomNavigationBar() }
@@ -342,8 +371,14 @@ fun AddFriendScreen(
         }
 
         if (searchResults.isNotEmpty()) {
-            Text("Search Results", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.Start))
-            LazyColumn {
+            Text(
+                "Search Results",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            LazyColumn(
+                modifier = Modifier.padding(top = 12.dp) // <-- Adjust this value (e.g., 8.dp, 12.dp, 16.dp)
+            ) {
                 items(searchResults) { user ->
                     FriendItem(
                         username = user.username,
@@ -355,7 +390,7 @@ fun AddFriendScreen(
                 }
             }
         } else if (searchQuery.text.isNotBlank() && !isLoading) {
-            Text("No users found", Modifier.padding(16.dp))
+            Text("No users found!", Modifier.padding(16.dp))
         }
     }
 }
@@ -428,7 +463,7 @@ fun FriendItem(
                         onClick = it,
                         modifier = Modifier.height(36.dp)
                     ) {
-                        Text("Add Friend")
+                        Text("Add Friend", color = Color.White)
                     }
                 }
             }
@@ -530,7 +565,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.Home,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
             IconButton({ /* already here */ }) {
@@ -538,7 +573,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.Group,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
             IconButton({ context.startActivity(Intent(context, UserAnswersActivity::class.java)) }) {
@@ -546,7 +581,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.List,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
             IconButton({ context.startActivity(Intent(context, SettingsActivity::class.java)) }) {
@@ -554,7 +589,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.Settings,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
         }

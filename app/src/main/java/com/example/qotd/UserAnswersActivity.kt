@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -18,12 +19,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -47,11 +54,18 @@ class UserAnswersActivity : ComponentActivity() {
         val extras = intent.extras
         val questionDate = extras?.getString("questionDate")?.let { LocalDate.parse(it) } ?: LocalDate.now()
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
 
         setContent {
             val context = LocalContext.current
+            val iconColor = if (isDarkMode) Color.White else Color.Black
 
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
+
                 Scaffold(
                     topBar = {
                         TopAppBar(
@@ -76,23 +90,24 @@ class UserAnswersActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
-                                IconButton(
-                                    onClick = {
-                                        val intent = Intent(context, PastQuestionsActivity::class.java)
-                                        context.startActivity(intent)
-                                    },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.past_icon),
-                                        contentDescription = "Past QOTDs",
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .graphicsLayer { rotationY = 180f }
-                                            .offset(x = 4.dp)
-                                    )
-                                }
-                            },
+                            IconButton(
+                                onClick = {
+                                    val intent = Intent(context, PastQuestionsActivity::class.java)
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.past_icon),
+                                    contentDescription = "Past QOTDs",
+                                    colorFilter = ColorFilter.tint(iconColor),
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .graphicsLayer { rotationY = 180f }
+                                        .offset(x = 4.dp)
+                                )
+                            }
+                        },
                             colors = TopAppBarDefaults.topAppBarColors()
                         )
                     },
@@ -318,7 +333,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
+        Text("$questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn {
@@ -398,43 +413,60 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                                 text = username,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
+
+                            // Moved like button to the right side
+                            Spacer(modifier = Modifier.weight(1f))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center // TODO: this doesn't do shit, not a big deal but bruh
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        likeAnswer(answerId, currentUserId) {
+                                            refreshAnswersTrigger.value += 1
+                                        }
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Text(
+                                    "${likesList.size}",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    fontSize = 15.sp
+                                )
+                            }
                         }
 
                         Text(
                             text = answerText,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 5.dp)
+                            modifier = Modifier.padding(top = 10.dp)
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { likeAnswer(answerId, currentUserId) }) {
-                                Icon(
-                                    imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Like",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Text(
-                                "${likesList.size} Likes",
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Text(
-                                text = replyText,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable { showComments = !showComments }.padding(4.dp),
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
+                        // Replies button moved to left-bottom
+                        Text(
+                            text = replyText,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clickable { showComments = !showComments }
+                                .padding(6.dp),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            fontSize = 15.sp
+                        )
 
                         if (showComments) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Comments:", style = MaterialTheme.typography.bodyLarge)
                             commentsList.forEach { comment ->
                                 val commentUserId = comment["userId"]?.toString() ?: "UnknownUser"
                                 var commentUsername by remember { mutableStateOf("Loading...") }
@@ -444,24 +476,52 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                                     }
                                 }
                                 val commentText = comment["comment"]?.toString() ?: ""
-                                Text(text = "$commentUsername: $commentText")
+
+                                // Use AnnotatedString to style parts differently
+                                val annotatedText = buildAnnotatedString {
+                                    // Bold username
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append("$commentUsername: ")
+                                    }
+                                    // Normal comment text
+                                    append(commentText)
+                                }
+
+                                Text(
+                                    text = annotatedText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 15.sp
+                                )
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             OutlinedTextField(
                                 value = newComment,
                                 onValueChange = { newComment = it },
-                                label = { Text("Add a comment") },
+                                label = { Text("Add a comment...") },
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            Button(
-                                onClick = {
-                                    if (newComment.isNotBlank()) {
-                                        addComment(answerId, newComment)
-                                        newComment = ""
-                                    }
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
                             ) {
-                                Text("Reply")
+                                Button(
+                                    onClick = {
+                                        if (newComment.isNotBlank()) {
+                                            addComment(answerId, newComment) {
+                                                refreshAnswersTrigger.value += 1
+                                            }
+                                            newComment = ""
+                                        }
+                                    },
+                                    modifier = Modifier.padding(top = 8.dp),
+                                ) {
+                                    Text("Reply", color = Color.White, fontSize = 15.sp)
+                                }
                             }
                         }
                     }
@@ -499,27 +559,27 @@ fun AnswerBottomNavigationBar() {
             IconButton(onClick = {
                 context.startActivity(Intent(context, MainActivity::class.java))
             }) {
-                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = {
                 context.startActivity(Intent(context, AddFriendActivity::class.java))
             }) {
-                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = { }) {
-                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = {
                 val intent = Intent(context, SettingsActivity::class.java)
                 (context as? ComponentActivity)?.startActivityForResult(intent, 100)
             }) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = Color.White)
             }
         }
     }
 }
 
-fun likeAnswer(answerId: String, userId: String) {
+fun likeAnswer(answerId: String, userId: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val answerRef = firestore.collection("dailyAnswer").document(answerId)
     firestore.runTransaction { transaction ->
@@ -527,10 +587,12 @@ fun likeAnswer(answerId: String, userId: String) {
         val likesList = (snapshot.get("likes") as? List<*>)?.mapNotNull { it as? String }?.toMutableList() ?: mutableListOf()
         if (!likesList.contains(userId)) likesList.add(userId) else likesList.remove(userId)
         transaction.update(answerRef, "likes", likesList)
+    }.addOnSuccessListener {
+        onSuccess()
     }
 }
 
-fun addComment(answerId: String, commentText: String) {
+fun addComment(answerId: String, commentText: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val answerRef = firestore.collection("dailyAnswer").document(answerId)
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
@@ -538,4 +600,7 @@ fun addComment(answerId: String, commentText: String) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
     val newComment = hashMapOf("userId" to currentUserId, "comment" to commentText, "timestamp" to currentTime)
     answerRef.update("comments", FieldValue.arrayUnion(newComment))
+        .addOnSuccessListener {
+            onSuccess()
+        }
 }

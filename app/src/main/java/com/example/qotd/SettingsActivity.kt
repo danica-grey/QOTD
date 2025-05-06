@@ -55,8 +55,11 @@ import androidx.compose.ui.tooling.preview.Preview
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
+
         setContent {
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SettingsScreen()
                 }
@@ -83,7 +86,6 @@ fun SettingsScreen() {
     var username by remember { mutableStateOf("Username") }
     var selectedImage by remember { mutableStateOf<Int?>(null) }
     var savedProfilePic by remember { mutableStateOf<String?>(null) }
-
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -463,6 +465,36 @@ fun SettingsScreen() {
                 }
             }
 
+            // Dark mode
+            var isDarkMode by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        isDarkMode = !isDarkMode
+                        prefs.edit().putBoolean("dark_mode", isDarkMode).apply()
+                        (context as? ComponentActivity)?.recreate() // recreate activity to apply theme
+                    }
+                    .padding(vertical = 0.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Dark Mode", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
+                }
+                Switch(
+                    checked = isDarkMode,
+                    onCheckedChange = {
+                        isDarkMode = it
+                        prefs.edit().putBoolean("dark_mode", isDarkMode).apply()
+                        (context as? ComponentActivity)?.recreate()
+                    }
+                )
+            }
+
             // Reset Password
             SettingsOption("Reset Password", Icons.Default.Email) {
                 val email = FirebaseAuth.getInstance().currentUser?.email
@@ -497,10 +529,10 @@ fun SettingsScreen() {
                         Toast.makeText(context, "You must sign in again before deleting your account.", Toast.LENGTH_LONG).show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.9f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Delete Account", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
+                Text("Delete Account", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp), color = Color.White)
             }
         }
     }
@@ -508,7 +540,7 @@ fun SettingsScreen() {
 
 @Composable
 fun SettingsOption(text: String, icon: ImageVector, isDestructive: Boolean = false, onClick: () -> Unit) {
-    val color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val color = if (isDestructive) Color.Red.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurface
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -581,23 +613,23 @@ fun SettingsBottomNavigationBar() {
             IconButton(onClick = {
                 context.startActivity(Intent(context, MainActivity::class.java))
             }) {
-                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = Color.White)
             }
 
             IconButton(onClick = {
                 context.startActivity(Intent(context, AddFriendActivity::class.java))
             }) {
-                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = Color.White)
             }
 
             IconButton(onClick = {
                 context.startActivity(Intent(context, UserAnswersActivity::class.java))
             }) {
-                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = Color.White)
             }
 
             IconButton(onClick = {}) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = Color.White)
             }
         }
     }
