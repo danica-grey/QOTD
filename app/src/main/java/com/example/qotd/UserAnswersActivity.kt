@@ -434,10 +434,14 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
                                 Text(
                                     "${likesList.size}",
                                     color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    fontSize = 15.sp
                                 )
                             }
                         }
