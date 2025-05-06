@@ -1,6 +1,7 @@
 package com.example.qotd
 
 import android.app.Activity.RESULT_OK
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,7 +23,10 @@ class StreaksActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            QOTDTheme {
+            val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+            val isDarkMode = prefs.getBoolean("dark_mode", false)
+
+            QOTDTheme(darkTheme = isDarkMode) {
                 StreaksScreen()
             }
         }
@@ -56,7 +60,7 @@ fun StreaksScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Your Streaks") },
+                title = { Text("Streaks") },
                 navigationIcon = {
                     IconButton(onClick = {
                         (context as? ComponentActivity)?.apply {
