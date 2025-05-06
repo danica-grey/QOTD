@@ -59,9 +59,6 @@ class PastQuestionsActivity : ComponentActivity() {
                                     Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
                                 }
                             },
-                            actions = {
-                                SettingsButton()
-                            }
                         )
                     }
                 ) { innerPadding ->

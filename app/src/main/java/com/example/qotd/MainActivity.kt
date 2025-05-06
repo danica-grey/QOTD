@@ -28,6 +28,7 @@ import java.util.*
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -123,12 +124,13 @@ class MainActivity : ComponentActivity() {
                         ) {
                             val dateFormatter = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
                             val formattedDate = dateFormatter.format(Date())
+                            val textColor = if (isDarkMode) Color.White else MaterialTheme.colorScheme.secondary
 
                             Text(
                                 text = formattedDate,
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontSize = 20.sp,
-                                    color = MaterialTheme.colorScheme.secondary
+                                    color = textColor
                                 ),
                                 modifier = Modifier.align(Alignment.Center)
                             )
@@ -290,7 +292,7 @@ fun QuestionAnswerScreen(
                         },
                         modifier = Modifier.height(52.dp)
                     ) {
-                        Text("Submit", fontSize = 20.sp)
+                        Text("Submit", fontSize = 20.sp, color = Color.White)
                     }
                 }
             } else {

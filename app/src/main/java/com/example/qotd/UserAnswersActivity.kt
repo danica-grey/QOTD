@@ -19,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +55,7 @@ class UserAnswersActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
+            val iconColor = if (isDarkMode) Color.White else Color.Black
 
             QOTDTheme(darkTheme = isDarkMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -83,23 +86,24 @@ class UserAnswersActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
-                                IconButton(
-                                    onClick = {
-                                        val intent = Intent(context, PastQuestionsActivity::class.java)
-                                        context.startActivity(intent)
-                                    },
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.past_icon),
-                                        contentDescription = "Past QOTDs",
-                                        modifier = Modifier
-                                            .size(28.dp)
-                                            .graphicsLayer { rotationY = 180f }
-                                            .offset(x = 4.dp)
-                                    )
-                                }
-                            },
+                            IconButton(
+                                onClick = {
+                                    val intent = Intent(context, PastQuestionsActivity::class.java)
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.past_icon),
+                                    contentDescription = "Past QOTDs",
+                                    colorFilter = ColorFilter.tint(iconColor),
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .graphicsLayer { rotationY = 180f }
+                                        .offset(x = 4.dp)
+                                )
+                            }
+                        },
                             colors = TopAppBarDefaults.topAppBarColors()
                         )
                     },
