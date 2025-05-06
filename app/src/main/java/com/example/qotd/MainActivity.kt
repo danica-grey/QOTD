@@ -306,7 +306,7 @@ fun QuestionAnswerScreen(
                         .align(Alignment.End)
                         .height(52.dp)
                 ) {
-                    Text("View Answers", fontSize = 20.sp)
+                    Text("View Answers", fontSize = 20.sp, color = Color.White)
                 }
             }
         }
