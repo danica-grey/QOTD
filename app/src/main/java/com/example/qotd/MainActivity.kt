@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -40,13 +41,19 @@ class MainActivity : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
         val cameFromAnswerScreen = sharedPreferences.getBoolean("cameFromAnswerScreen", false)
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
 
         setContent {
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
                 val context = LocalContext.current
                 var answeredToday by remember { mutableStateOf(false) }
+
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
 
                 LaunchedEffect(currentUserId) {
                     if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {

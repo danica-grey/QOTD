@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -47,11 +48,17 @@ class UserAnswersActivity : ComponentActivity() {
         val extras = intent.extras
         val questionDate = extras?.getString("questionDate")?.let { LocalDate.parse(it) } ?: LocalDate.now()
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
 
         setContent {
             val context = LocalContext.current
 
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
+
                 Scaffold(
                     topBar = {
                         TopAppBar(

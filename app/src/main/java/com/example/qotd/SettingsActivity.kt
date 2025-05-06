@@ -55,8 +55,11 @@ import androidx.compose.ui.tooling.preview.Preview
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
+
         setContent {
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SettingsScreen()
                 }
@@ -461,6 +464,36 @@ fun SettingsScreen() {
                         }
                     }
                 }
+            }
+
+            // Dark mode
+            var isDarkMode by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        isDarkMode = !isDarkMode
+                        prefs.edit().putBoolean("dark_mode", isDarkMode).apply()
+                        (context as? ComponentActivity)?.recreate() // recreate activity to apply theme
+                    }
+                    .padding(vertical = 0.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Dark Mode", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
+                }
+                Switch(
+                    checked = isDarkMode,
+                    onCheckedChange = {
+                        isDarkMode = it
+                        prefs.edit().putBoolean("dark_mode", isDarkMode).apply()
+                        (context as? ComponentActivity)?.recreate()
+                    }
+                )
             }
 
             // Reset Password
