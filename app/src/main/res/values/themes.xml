@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.QOTD" parent="android:Theme.Material.Light.NoActionBar">
-        <!--hides default splash screen-->
+    <style name="Theme.QOTD" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Make the splash screen transparent -->
         <item name="android:windowIsTranslucent">true</item>
-
     </style>
-
 </resources>

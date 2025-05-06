@@ -106,15 +106,15 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .padding(top = 48.dp)
                         ) {
-                            Text(
-                                text = "QOTD",
+                            /*Text(
+                                text = "Today's Question",
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 42.sp,
                                     color = MaterialTheme.colorScheme.primary
                                 ),
                                 modifier = Modifier.align(Alignment.Center)
-                            )
+                            )*/
                         }
 
                         Box(
@@ -126,14 +126,14 @@ class MainActivity : ComponentActivity() {
                             val formattedDate = dateFormatter.format(Date())
                             val textColor = if (isDarkMode) Color.White else MaterialTheme.colorScheme.secondary
 
-                            Text(
+                            /*Text(
                                 text = formattedDate,
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontSize = 20.sp,
                                     color = textColor
                                 ),
                                 modifier = Modifier.align(Alignment.Center)
-                            )
+                            )*/
                         }
 
                         Box(
@@ -255,7 +255,7 @@ fun QuestionAnswerScreen(
                 onValueChange = { userAnswer = it },
                 label = {
                     Text(
-                        if (answeredToday) "Answer Submitted!" else "Type something..."
+                        if (answeredToday) "Answer submitted!" else "Type something..."
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),

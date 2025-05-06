@@ -1,10 +1,12 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,22 +18,34 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.graphics.Color
 
 class SplashActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Set the splash screen content using Jetpack Compose
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
+
         setContent {
-            SplashScreenContent()
+            val backgroundColor = if (isDarkMode) Color.Black else Color.White
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor),  // Dynamically set background
+                contentAlignment = Alignment.Center
+            ) {
+                SplashScreenContent()
+            }
         }
 
-        // Logic to check user authentication and answer status
+
+        // Firebase auth and redirection logic
         val auth = FirebaseAuth.getInstance()
         val currentUser = auth.currentUser
 
         if (currentUser == null) {
-            // Not logged in, go to Login screen
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
         } else {
@@ -39,13 +53,10 @@ class SplashActivity : ComponentActivity() {
             val db = FirebaseFirestore.getInstance()
             val userRef = db.collection("users").document(userId)
 
-            userRef.get().addOnSuccessListener { document ->
-
+            userRef.get().addOnSuccessListener {
                 startActivity(Intent(this, MainActivity::class.java))
-
                 finish()
             }.addOnFailureListener {
-                // Couldn’t load user data — send to Login as fallback
                 startActivity(Intent(this, LoginActivity::class.java))
                 finish()
             }

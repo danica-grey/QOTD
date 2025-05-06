@@ -25,8 +25,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -329,7 +333,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
+        Text("$questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn {
@@ -409,43 +413,56 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                                 text = username,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
+
+                            // Moved like button to the right side
+                            Spacer(modifier = Modifier.weight(1f))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center // TODO: this doesn't do shit, not a big deal but bruh
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        likeAnswer(answerId, currentUserId) {
+                                            refreshAnswersTrigger.value += 1
+                                        }
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Text(
+                                    "${likesList.size}",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
 
                         Text(
                             text = answerText,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 5.dp)
+                            modifier = Modifier.padding(top = 10.dp)
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { likeAnswer(answerId, currentUserId) }) {
-                                Icon(
-                                    imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Like",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Text(
-                                "${likesList.size} Likes",
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Text(
-                                text = replyText,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable { showComments = !showComments }.padding(4.dp),
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
+                        // Replies button moved to left-bottom
+                        Text(
+                            text = replyText,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clickable { showComments = !showComments }
+                                .padding(6.dp),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            fontSize = 15.sp
+                        )
 
                         if (showComments) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Comments:", style = MaterialTheme.typography.bodyLarge)
                             commentsList.forEach { comment ->
                                 val commentUserId = comment["userId"]?.toString() ?: "UnknownUser"
                                 var commentUsername by remember { mutableStateOf("Loading...") }
@@ -455,24 +472,52 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                                     }
                                 }
                                 val commentText = comment["comment"]?.toString() ?: ""
-                                Text(text = "$commentUsername: $commentText")
+
+                                // Use AnnotatedString to style parts differently
+                                val annotatedText = buildAnnotatedString {
+                                    // Bold username
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append("$commentUsername: ")
+                                    }
+                                    // Normal comment text
+                                    append(commentText)
+                                }
+
+                                Text(
+                                    text = annotatedText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 15.sp
+                                )
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             OutlinedTextField(
                                 value = newComment,
                                 onValueChange = { newComment = it },
-                                label = { Text("Add a comment") },
+                                label = { Text("Add a comment...") },
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            Button(
-                                onClick = {
-                                    if (newComment.isNotBlank()) {
-                                        addComment(answerId, newComment)
-                                        newComment = ""
-                                    }
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
                             ) {
-                                Text("Reply")
+                                Button(
+                                    onClick = {
+                                        if (newComment.isNotBlank()) {
+                                            addComment(answerId, newComment) {
+                                                refreshAnswersTrigger.value += 1
+                                            }
+                                            newComment = ""
+                                        }
+                                    },
+                                    modifier = Modifier.padding(top = 8.dp),
+                                ) {
+                                    Text("Reply", color = Color.White, fontSize = 15.sp)
+                                }
                             }
                         }
                     }
@@ -530,7 +575,7 @@ fun AnswerBottomNavigationBar() {
     }
 }
 
-fun likeAnswer(answerId: String, userId: String) {
+fun likeAnswer(answerId: String, userId: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val answerRef = firestore.collection("dailyAnswer").document(answerId)
     firestore.runTransaction { transaction ->
@@ -538,10 +583,12 @@ fun likeAnswer(answerId: String, userId: String) {
         val likesList = (snapshot.get("likes") as? List<*>)?.mapNotNull { it as? String }?.toMutableList() ?: mutableListOf()
         if (!likesList.contains(userId)) likesList.add(userId) else likesList.remove(userId)
         transaction.update(answerRef, "likes", likesList)
+    }.addOnSuccessListener {
+        onSuccess()
     }
 }
 
-fun addComment(answerId: String, commentText: String) {
+fun addComment(answerId: String, commentText: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val answerRef = firestore.collection("dailyAnswer").document(answerId)
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
@@ -549,4 +596,7 @@ fun addComment(answerId: String, commentText: String) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
     val newComment = hashMapOf("userId" to currentUserId, "comment" to commentText, "timestamp" to currentTime)
     answerRef.update("comments", FieldValue.arrayUnion(newComment))
+        .addOnSuccessListener {
+            onSuccess()
+        }
 }
