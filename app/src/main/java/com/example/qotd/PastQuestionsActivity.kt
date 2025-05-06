@@ -23,6 +23,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import kotlinx.coroutines.tasks.await
 
@@ -60,7 +63,8 @@ class PastQuestionsActivity : ComponentActivity() {
                                 }
                             },
                         )
-                    }
+                    },
+                    bottomBar = { PastBottomNavigationBar() },
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
@@ -229,6 +233,43 @@ fun PastQuestionItem(pastQuestion: PastQuestion) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun PastBottomNavigationBar() {
+    val context = LocalContext.current
+    BottomAppBar(
+        modifier = Modifier.fillMaxWidth().height(88.dp),
+        containerColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                context.startActivity(Intent(context, MainActivity::class.java))
+            }) {
+                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+            }
+            IconButton(onClick = {
+                context.startActivity(Intent(context, AddFriendActivity::class.java))
+            }) {
+                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+            }
+            IconButton(onClick = {
+                context.startActivity(Intent(context, UserAnswersActivity::class.java))
+            }) {
+                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+            }
+            IconButton(onClick = {
+                val intent = Intent(context, SettingsActivity::class.java)
+                (context as? ComponentActivity)?.startActivityForResult(intent, 100)
+            }) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }

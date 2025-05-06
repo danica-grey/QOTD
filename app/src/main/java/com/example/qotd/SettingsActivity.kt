@@ -530,7 +530,7 @@ fun SettingsScreen() {
                         Toast.makeText(context, "You must sign in again before deleting your account.", Toast.LENGTH_LONG).show()
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.9f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Delete Account", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp), color = Color.White)
@@ -541,7 +541,7 @@ fun SettingsScreen() {
 
 @Composable
 fun SettingsOption(text: String, icon: ImageVector, isDestructive: Boolean = false, onClick: () -> Unit) {
-    val color = if (isDestructive) Color.Red else MaterialTheme.colorScheme.onSurface
+    val color = if (isDestructive) Color.Red.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurface
     Row(
         modifier = Modifier
             .fillMaxWidth()
