@@ -463,7 +463,7 @@ fun FriendItem(
                         onClick = it,
                         modifier = Modifier.height(36.dp)
                     ) {
-                        Text("Add Friend")
+                        Text("Add Friend", color = Color.White)
                     }
                 }
             }
