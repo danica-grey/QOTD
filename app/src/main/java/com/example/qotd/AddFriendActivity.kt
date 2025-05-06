@@ -40,6 +40,7 @@ data class FriendSearchResult(
 )
 
 class AddFriendActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -57,6 +58,24 @@ class AddFriendActivity : ComponentActivity() {
                 }
 
                 Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text("Add Friends", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = 8.dp))
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    // Use 'this@AddFriendActivity' instead of 'context'
+                                    this@AddFriendActivity.apply {
+                                        setResult(RESULT_OK)
+                                        finish()
+                                    }
+                                }) {
+                                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            }
+                        )
+                    },
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                     bottomBar = { FriendBottomNavigationBar() }
@@ -351,8 +370,14 @@ fun AddFriendScreen(
         }
 
         if (searchResults.isNotEmpty()) {
-            Text("Search Results", style = MaterialTheme.typography.titleLarge, modifier = Modifier.align(Alignment.Start))
-            LazyColumn {
+            Text(
+                "Search Results",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.align(Alignment.Start)
+            )
+            LazyColumn(
+                modifier = Modifier.padding(top = 12.dp) // <-- Adjust this value (e.g., 8.dp, 12.dp, 16.dp)
+            ) {
                 items(searchResults) { user ->
                     FriendItem(
                         username = user.username,
@@ -364,7 +389,7 @@ fun AddFriendScreen(
                 }
             }
         } else if (searchQuery.text.isNotBlank() && !isLoading) {
-            Text("No users found", Modifier.padding(16.dp))
+            Text("No users found!", Modifier.padding(16.dp))
         }
     }
 }

@@ -87,7 +87,6 @@ fun SettingsScreen() {
     var selectedImage by remember { mutableStateOf<Int?>(null) }
     var savedProfilePic by remember { mutableStateOf<String?>(null) }
 
-
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
