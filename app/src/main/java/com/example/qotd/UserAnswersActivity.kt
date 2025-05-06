@@ -510,21 +510,21 @@ fun AnswerBottomNavigationBar() {
             IconButton(onClick = {
                 context.startActivity(Intent(context, MainActivity::class.java))
             }) {
-                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = {
                 context.startActivity(Intent(context, AddFriendActivity::class.java))
             }) {
-                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = { }) {
-                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = {
                 val intent = Intent(context, SettingsActivity::class.java)
                 (context as? ComponentActivity)?.startActivityForResult(intent, 100)
             }) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = Color.White)
             }
         }
     }

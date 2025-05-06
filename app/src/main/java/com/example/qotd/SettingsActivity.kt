@@ -481,7 +481,7 @@ fun SettingsScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Dark Mode", style = MaterialTheme.typography.bodyLarge.copy(fontSize = 20.sp))
                 }
@@ -613,23 +613,23 @@ fun SettingsBottomNavigationBar() {
             IconButton(onClick = {
                 context.startActivity(Intent(context, MainActivity::class.java))
             }) {
-                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = Color.White)
             }
 
             IconButton(onClick = {
                 context.startActivity(Intent(context, AddFriendActivity::class.java))
             }) {
-                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = Color.White)
             }
 
             IconButton(onClick = {
                 context.startActivity(Intent(context, UserAnswersActivity::class.java))
             }) {
-                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = Color.White)
             }
 
             IconButton(onClick = {}) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = Color.White)
             }
         }
     }

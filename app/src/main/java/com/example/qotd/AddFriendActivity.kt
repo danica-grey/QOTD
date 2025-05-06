@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
@@ -564,7 +565,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.Home,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
             IconButton({ /* already here */ }) {
@@ -572,7 +573,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.Group,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
             IconButton({ context.startActivity(Intent(context, UserAnswersActivity::class.java)) }) {
@@ -580,7 +581,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.List,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
             IconButton({ context.startActivity(Intent(context, SettingsActivity::class.java)) }) {
@@ -588,7 +589,7 @@ fun FriendBottomNavigationBar() {
                     Icons.Default.Settings,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
         }

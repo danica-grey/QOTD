@@ -404,7 +404,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Home,
                     contentDescription = "Home",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -415,7 +415,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Group,
                     contentDescription = "Friends",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -426,7 +426,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.List,
                     contentDescription = "Answers",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -437,7 +437,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Settings,
                     contentDescription = "Settings",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
         }
