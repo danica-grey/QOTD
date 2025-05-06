@@ -39,18 +39,7 @@ class SplashActivity : ComponentActivity() {
             val db = FirebaseFirestore.getInstance()
             val userRef = db.collection("users").document(userId)
 
-            userRef.get().addOnSuccessListener { document ->/* disable disabling back button for now
-                val answeredToday = document.getBoolean("answeredToday") ?: false
-                val lastAnsweredDate = document.getString("lastAnsweredDate")
-                val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-
-                if (answeredToday && lastAnsweredDate == todayDate) {
-                    // User already answered today, go to Answers screen
-                    startActivity(Intent(this, UserAnswersActivity::class.java))
-                } else {
-                    // Not answered yet, go to QOTD screen
-                    startActivity(Intent(this, MainActivity::class.java))
-                }*/
+            userRef.get().addOnSuccessListener { document ->
 
                 startActivity(Intent(this, MainActivity::class.java))
 
@@ -66,7 +55,7 @@ class SplashActivity : ComponentActivity() {
 
 @Composable
 fun SplashScreenContent() {
-    val image: Painter = painterResource(id = R.drawable.splash_image) // Add the image from drawable
+    val image: Painter = painterResource(id = R.drawable.quilcircle) // Add the image from drawable
 
     Box(
         modifier = Modifier
