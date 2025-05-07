@@ -90,24 +90,24 @@ class UserAnswersActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
-                            IconButton(
-                                onClick = {
-                                    val intent = Intent(context, PastQuestionsActivity::class.java)
-                                    context.startActivity(intent)
-                                },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.past_icon),
-                                    contentDescription = "Past QOTDs",
-                                    colorFilter = ColorFilter.tint(iconColor),
-                                    modifier = Modifier
-                                        .size(28.dp)
-                                        .graphicsLayer { rotationY = 180f }
-                                        .offset(x = 4.dp)
-                                )
-                            }
-                        },
+                                IconButton(
+                                    onClick = {
+                                        val intent = Intent(context, PastQuestionsActivity::class.java)
+                                        context.startActivity(intent)
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.past_icon),
+                                        contentDescription = "Past QOTDs",
+                                        colorFilter = ColorFilter.tint(iconColor),
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .graphicsLayer { rotationY = 180f }
+                                            .offset(x = 4.dp)
+                                    )
+                                }
+                            },
                             colors = TopAppBarDefaults.topAppBarColors()
                         )
                     },
@@ -157,6 +157,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
     val userNames = remember { mutableStateMapOf<String, String>() }
     val profilePicCache = remember { mutableStateMapOf<String, String?>() }
     var userPrivacySettings by remember { mutableStateOf<Map<String, Any>?>(null) }
+    val userStreaks = remember { mutableStateMapOf<String, Int>() }
 
     val friendsList = remember { mutableStateListOf<String>() }
     var friendsFetched by remember { mutableStateOf(false) }
@@ -197,6 +198,21 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                 friendsFetched = true
                 onComplete()
             }
+    }
+    fun fetchUserStreaks(userIds: List<String>) {
+        val firestore = FirebaseFirestore.getInstance()
+        for (userId in userIds) {
+            if (userStreaks.containsKey(userId)) continue
+
+            firestore.collection("users").document(userId).get()
+                .addOnSuccessListener { doc ->
+                    val streak = doc.getLong("streakCount")?.toInt() ?: 0
+                    userStreaks[userId] = streak
+                }
+                .addOnFailureListener {
+                    userStreaks[userId] = 0
+                }
+        }
     }
 
     fun isUserFriendsWithOtherUser(otherUserId: String): Boolean {
@@ -326,6 +342,8 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                                 }
 
                             answers = userAnswers + sortedAnswers
+                            val userIdsToFetch = (userAnswers + sortedAnswers).mapNotNull { it.second["userId"] as? String }.distinct()
+                            fetchUserStreaks(userIdsToFetch)
                         }
                     }
             }
@@ -350,6 +368,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                 var username by remember { mutableStateOf("Loading...") }
                 var profilePicUrl by remember { mutableStateOf<String?>(null) }
 
+
                 LaunchedEffect(answer["userId"]) {
                     fetchUserNameAndPic(answer["userId"] as? String ?: "UnknownUser") { name, pic ->
                         username = name
@@ -360,6 +379,8 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                 val answerUserId = answer["userId"] as? String ?: "UnknownUser"
                 val privacy = userPrivacyMap[answerUserId] ?: "Public"
                 val isFriend = isUserFriendsWithOtherUser(answerUserId)
+                val streak = userStreaks[answerUserId] ?: 0
+                val displayName = if (streak > 0) "$username 🔥 $streak" else username
 
                 if (privacy == "Anonymous" && answerUserId != currentUserId && !isFriend) {
                     username = "Anonymous"
@@ -410,7 +431,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = username,
+                                text = displayName,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
 
@@ -604,3 +625,4 @@ fun addComment(answerId: String, commentText: String, onSuccess: () -> Unit) {
             onSuccess()
         }
 }
+
