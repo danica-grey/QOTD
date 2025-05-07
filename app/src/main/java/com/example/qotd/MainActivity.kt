@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import android.util.Log
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -191,6 +192,15 @@ fun QuestionAnswerScreen(
     var userAnswer by remember { mutableStateOf("") }
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    var streakCount by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            val userRef = FirebaseFirestore.getInstance().collection("users").document(currentUserId)
+            val doc = userRef.get().await()
+            streakCount = (doc.getLong("streakCount") ?: 0L).toInt()
+        }
+    }
 
     suspend fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
@@ -240,6 +250,18 @@ fun QuestionAnswerScreen(
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (streakCount > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .align(Alignment.Start)
+                ) {
+                    Text("🔥", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("$streakCount day streak", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
             Text(
                 text = question,
                 style = MaterialTheme.typography.headlineMedium,
@@ -331,8 +353,10 @@ fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
     FirebaseFirestore.getInstance().collection("dailyAnswer").add(answerData)
         .addOnSuccessListener {
             callback("Answer submitted.")
-            markAnsweredToday(userId)
-            updateStreakAndAchievements(userId)
+            updateStreakAndAchievements(userId) {
+                markAnsweredToday(userId)
+            }
+
         }
         .addOnFailureListener {
             callback("Failed to submit answer.")
@@ -351,14 +375,28 @@ fun markAnsweredToday(userId: String) {
         .set(userAnsweredData, SetOptions.merge())
 }
 
-fun updateStreakAndAchievements(userId: String) {
+fun updateStreakAndAchievements(userId: String, onComplete: () -> Unit) {
     val userRef = FirebaseFirestore.getInstance().collection("users").document(userId)
 
     userRef.get().addOnSuccessListener { doc ->
         val data = doc.data ?: return@addOnSuccessListener
 
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val today = java.time.LocalDate.now().format(formatter)
+        val yesterday = java.time.LocalDate.now().minusDays(1).format(formatter)
+        val lastAnswered = data["lastAnsweredDate"]?.toString()
+
         val oldStreak = (data["streakCount"] as? Number)?.toInt() ?: 0
-        val newStreak = oldStreak + 1
+        val oldLongest = (data["longestStreak"] as? Number)?.toInt() ?: 0
+
+        val newStreak = when (lastAnswered) {
+            yesterday -> oldStreak + 1
+            today -> oldStreak
+            else -> 1
+        }
+
+
+        val longestStreak = maxOf(newStreak, oldLongest)
 
         val achievements = (data["achievements"] as? Map<*, *>)?.mapNotNull { (k, v) ->
             val key = k as? String
@@ -367,7 +405,6 @@ fun updateStreakAndAchievements(userId: String) {
         }?.toMap() ?: emptyMap()
 
         val newAchievements = achievements.toMutableMap()
-
         if (newStreak >= 3) newAchievements["streak3"] = true
         if (newStreak >= 7) newAchievements["streak7"] = true
         if (newStreak >= 30) newAchievements["streak30"] = true
@@ -375,10 +412,13 @@ fun updateStreakAndAchievements(userId: String) {
 
         val updateData = mapOf(
             "streakCount" to newStreak,
+            "longestStreak" to longestStreak,
             "achievements" to newAchievements
         )
 
-        userRef.set(updateData, SetOptions.merge())
+        userRef.set(updateData, SetOptions.merge()).addOnSuccessListener {
+            onComplete()
+        }
     }
 }
 
