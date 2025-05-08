@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,6 +28,11 @@ import java.util.*
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import android.util.Log
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -37,13 +43,19 @@ class MainActivity : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("QOTD_PREFS", MODE_PRIVATE)
         val cameFromAnswerScreen = sharedPreferences.getBoolean("cameFromAnswerScreen", false)
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
 
         setContent {
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
                 val context = LocalContext.current
                 var answeredToday by remember { mutableStateOf(false) }
+
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
 
                 LaunchedEffect(currentUserId) {
                     if (!cameFromAnswerScreen && currentUserId.isNotEmpty()) {
@@ -77,6 +89,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    topBar = {
+                    },
                     bottomBar = {
                         MainBottomNavigationBar()
                     }
@@ -88,6 +102,41 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Top,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 48.dp)
+                        ) {
+                            /*Text(
+                                text = "Today's Question",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 42.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.align(Alignment.Center)
+                            )*/
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp)
+                        ) {
+                            val dateFormatter = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
+                            val formattedDate = dateFormatter.format(Date())
+                            val textColor = if (isDarkMode) Color.White else MaterialTheme.colorScheme.secondary
+
+                            /*Text(
+                                text = formattedDate,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 20.sp,
+                                    color = textColor
+                                ),
+                                modifier = Modifier.align(Alignment.Center)
+                            )*/
+                        }
+
                         Box(
                             modifier = Modifier
                                 .weight(1f)
@@ -108,7 +157,7 @@ class MainActivity : ComponentActivity() {
         sharedPreferences.edit().putBoolean("cameFromAnswerScreen", false).apply()
     }
 
-    // Override onResume to check the answer status when coming back to the main screen
+
     override fun onResume() {
         super.onResume()
 
@@ -117,7 +166,6 @@ class MainActivity : ComponentActivity() {
             val db = FirebaseFirestore.getInstance()
             val userRef = db.collection("users").document(currentUserId)
 
-            // Fetch the latest answer status from Firestore
             userRef.get().addOnSuccessListener { document ->
                 val lastAnsweredDate = document.getString("lastAnsweredDate")
                 val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
@@ -144,28 +192,47 @@ fun QuestionAnswerScreen(
     var userAnswer by remember { mutableStateOf("") }
     val context = LocalContext.current
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    var streakCount by remember { mutableIntStateOf(0) }
 
-    fun fetchQuestionOfTheDay() {
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            val userRef = FirebaseFirestore.getInstance().collection("users").document(currentUserId)
+            val doc = userRef.get().await()
+            streakCount = (doc.getLong("streakCount") ?: 0L).toInt()
+        }
+    }
+
+    suspend fun fetchQuestionOfTheDay() {
         val db = FirebaseFirestore.getInstance()
         val todayDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         val dailyQuestionRef = db.collection("dailyQuestions").document(todayDate)
-
-        dailyQuestionRef.get().addOnSuccessListener { document ->
-            if (document.exists()) {
-                question = document.getString("question") ?: "Error loading question."
-            } else {
-                db.collection("questions").get().addOnSuccessListener { result ->
-                    val questionsList = result.documents.mapNotNull { it.getString("Question") }
-                    if (questionsList.isNotEmpty()) {
-                        val randomQuestion = questionsList.random()
-                        dailyQuestionRef.set(mapOf("question" to randomQuestion))
-                        question = randomQuestion
-                    } else {
-                        question = "No questions available."
-                    }
-                }
+        try {
+            val todaySnap = dailyQuestionRef.get().await()
+            if (todaySnap.exists()) {
+                question = todaySnap.getString("question") ?: "Error loading question."
+                return
             }
-        }.addOnFailureListener {
+
+            val allQs = db.collection("questions")
+                .get().await()
+                .documents
+                .mapNotNull { it.getString("Question") }
+
+            val usedQs = db.collection("dailyQuestions")
+                .get().await()
+                .documents
+                .mapNotNull { it.getString("question") }
+                .toSet()
+
+            val unused = allQs.filterNot { it in usedQs }
+
+            val pool = if (unused.isEmpty()) allQs else unused
+
+            val pick = pool.random()
+            dailyQuestionRef.set(mapOf("question" to pick)).await()
+            question = pick
+
+        } catch (e: Exception) {
             question = "Failed to load question."
         }
     }
@@ -179,10 +246,22 @@ fun QuestionAnswerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .offset(y = (-48).dp),
-            verticalArrangement = Arrangement.Center,
+                .offset(y = 120.dp),
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (streakCount > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .align(Alignment.Start)
+                ) {
+                    Text("🔥", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("$streakCount day streak", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
             Text(
                 text = question,
                 style = MaterialTheme.typography.headlineMedium,
@@ -196,7 +275,11 @@ fun QuestionAnswerScreen(
             OutlinedTextField(
                 value = userAnswer,
                 onValueChange = { userAnswer = it },
-                label = { Text("Type something...") },
+                label = {
+                    Text(
+                        if (answeredToday) "Answer submitted!" else "Type something..."
+                    )
+                },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !answeredToday
             )
@@ -231,7 +314,7 @@ fun QuestionAnswerScreen(
                         },
                         modifier = Modifier.height(52.dp)
                     ) {
-                        Text("Submit", fontSize = 20.sp)
+                        Text("Submit", fontSize = 20.sp, color = Color.White)
                     }
                 }
             } else {
@@ -245,7 +328,7 @@ fun QuestionAnswerScreen(
                         .align(Alignment.End)
                         .height(52.dp)
                 ) {
-                    Text("View Answers", fontSize = 20.sp)
+                    Text("View Answers", fontSize = 20.sp, color = Color.White)
                 }
             }
         }
@@ -270,8 +353,10 @@ fun submitAnswer(userId: String, answer: String, callback: (String) -> Unit) {
     FirebaseFirestore.getInstance().collection("dailyAnswer").add(answerData)
         .addOnSuccessListener {
             callback("Answer submitted.")
-            markAnsweredToday(userId)
-            updateStreakAndAchievements(userId)
+            updateStreakAndAchievements(userId) {
+                markAnsweredToday(userId)
+            }
+
         }
         .addOnFailureListener {
             callback("Failed to submit answer.")
@@ -290,14 +375,28 @@ fun markAnsweredToday(userId: String) {
         .set(userAnsweredData, SetOptions.merge())
 }
 
-fun updateStreakAndAchievements(userId: String) {
+fun updateStreakAndAchievements(userId: String, onComplete: () -> Unit) {
     val userRef = FirebaseFirestore.getInstance().collection("users").document(userId)
 
     userRef.get().addOnSuccessListener { doc ->
         val data = doc.data ?: return@addOnSuccessListener
 
+        val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val today = java.time.LocalDate.now().format(formatter)
+        val yesterday = java.time.LocalDate.now().minusDays(1).format(formatter)
+        val lastAnswered = data["lastAnsweredDate"]?.toString()
+
         val oldStreak = (data["streakCount"] as? Number)?.toInt() ?: 0
-        val newStreak = oldStreak + 1
+        val oldLongest = (data["longestStreak"] as? Number)?.toInt() ?: 0
+
+        val newStreak = when (lastAnswered) {
+            yesterday -> oldStreak + 1
+            today -> oldStreak
+            else -> 1
+        }
+
+
+        val longestStreak = maxOf(newStreak, oldLongest)
 
         val achievements = (data["achievements"] as? Map<*, *>)?.mapNotNull { (k, v) ->
             val key = k as? String
@@ -306,7 +405,6 @@ fun updateStreakAndAchievements(userId: String) {
         }?.toMap() ?: emptyMap()
 
         val newAchievements = achievements.toMutableMap()
-
         if (newStreak >= 3) newAchievements["streak3"] = true
         if (newStreak >= 7) newAchievements["streak7"] = true
         if (newStreak >= 30) newAchievements["streak30"] = true
@@ -314,10 +412,13 @@ fun updateStreakAndAchievements(userId: String) {
 
         val updateData = mapOf(
             "streakCount" to newStreak,
+            "longestStreak" to longestStreak,
             "achievements" to newAchievements
         )
 
-        userRef.set(updateData, SetOptions.merge())
+        userRef.set(updateData, SetOptions.merge()).addOnSuccessListener {
+            onComplete()
+        }
     }
 }
 
@@ -343,7 +444,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Home,
                     contentDescription = "Home",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -354,7 +455,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Group,
                     contentDescription = "Friends",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -365,7 +466,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.List,
                     contentDescription = "Answers",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
 
@@ -376,7 +477,7 @@ fun MainBottomNavigationBar() {
                     Icons.Default.Settings,
                     contentDescription = "Settings",
                     modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = Color.White
                 )
             }
         }

@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -18,12 +19,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
@@ -32,6 +39,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import coil.compose.AsyncImage
+
+private var refreshAnswersTrigger = mutableStateOf(0)
 
 class UserAnswersActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -41,11 +55,18 @@ class UserAnswersActivity : ComponentActivity() {
         val extras = intent.extras
         val questionDate = extras?.getString("questionDate")?.let { LocalDate.parse(it) } ?: LocalDate.now()
         val displayDate = questionDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"))
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
 
         setContent {
             val context = LocalContext.current
+            val iconColor = if (isDarkMode) Color.White else Color.Black
 
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
+
                 Scaffold(
                     topBar = {
                         TopAppBar(
@@ -59,9 +80,9 @@ class UserAnswersActivity : ComponentActivity() {
                             },
                             navigationIcon = {
                                 IconButton(onClick = {
-                                    val intent = Intent(context, MainActivity::class.java)
-                                    context.startActivity(intent)
-                                    if (context is ComponentActivity) context.finish()
+                                    if (context is ComponentActivity) {
+                                        context.finish() // Just go back
+                                    }
                                 }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -80,6 +101,7 @@ class UserAnswersActivity : ComponentActivity() {
                                     Image(
                                         painter = painterResource(id = R.drawable.past_icon),
                                         contentDescription = "Past QOTDs",
+                                        colorFilter = ColorFilter.tint(iconColor),
                                         modifier = Modifier
                                             .size(28.dp)
                                             .graphicsLayer { rotationY = 180f }
@@ -99,31 +121,111 @@ class UserAnswersActivity : ComponentActivity() {
                             .padding(innerPadding),
                         verticalArrangement = Arrangement.Top
                     ) {
-                        UserAnswersScreen(questionDate, displayDate)
+                        UserAnswersScreen(questionDate, displayDate, refreshAnswersTrigger.value)
                     }
                 }
             }
         }
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 100 && resultCode == RESULT_OK) {
+            refreshAnswersTrigger.value += 1
         }
-        startActivity(intent)
-        finish()
+    }
+
+    override fun onBackPressed() {
+        val wasNavigatedFromPastQuestions = intent.getBooleanExtra("fromPastQuestions", false)
+
+        if (wasNavigatedFromPastQuestions) {
+            val intent = Intent(this, PastQuestionsActivity::class.java)
+            startActivity(intent)
+        } else {
+            super.onBackPressed()
+        }
     }
 }
 
 @Composable
-fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
+fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigger: Int) {
     val firestore = FirebaseFirestore.getInstance()
     var answers by remember { mutableStateOf<List<Pair<String, Map<String, Any>>>>(emptyList()) }
     var questionOfTheDay by remember { mutableStateOf("Loading question...") }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
     val userNames = remember { mutableStateMapOf<String, String>() }
     val profilePicCache = remember { mutableStateMapOf<String, String?>() }
+    var userPrivacySettings by remember { mutableStateOf<Map<String, Any>?>(null) }
+    val userStreaks = remember { mutableStateMapOf<String, Int>() }
+
+    val friendsList = remember { mutableStateListOf<String>() }
+    var friendsFetched by remember { mutableStateOf(false) }
+    val userPrivacyMap = remember { mutableStateMapOf<String, String>() }
+
+    fun fetchUserPrivacy(userId: String, onResult: (String) -> Unit) {
+        if (userPrivacyMap.containsKey(userId)) {
+            onResult(userPrivacyMap[userId] ?: "Public")
+            return
+        }
+
+        firestore.collection("users").document(userId).get()
+            .addOnSuccessListener { document ->
+                val privacy = document.getString("privacy") ?: "Public"
+                userPrivacyMap[userId] = privacy
+                onResult(privacy)
+            }
+            .addOnFailureListener {
+                userPrivacyMap[userId] = "Public"
+                onResult("Public")
+            }
+    }
+
+    fun fetchFriendsListIfNeeded(onComplete: () -> Unit) {
+        if (friendsFetched) {
+            onComplete()
+            return
+        }
+        firestore.collection("friends").document(currentUserId).get()
+            .addOnSuccessListener { document ->
+                val list = document.get("friends") as? List<*>
+                friendsList.clear()
+                friendsList.addAll(list?.filterIsInstance<String>().orEmpty())
+                friendsFetched = true
+                onComplete()
+            }
+            .addOnFailureListener {
+                friendsFetched = true
+                onComplete()
+            }
+    }
+    fun fetchUserStreaks(userIds: List<String>) {
+        val firestore = FirebaseFirestore.getInstance()
+        for (userId in userIds) {
+            if (userStreaks.containsKey(userId)) continue
+
+            firestore.collection("users").document(userId).get()
+                .addOnSuccessListener { doc ->
+                    val streak = doc.getLong("streakCount")?.toInt() ?: 0
+                    userStreaks[userId] = streak
+                }
+                .addOnFailureListener {
+                    userStreaks[userId] = 0
+                }
+        }
+    }
+
+    fun isUserFriendsWithOtherUser(otherUserId: String): Boolean {
+        return friendsList.contains(otherUserId)
+    }
+
+    fun fetchUserPrivacySettings(onResult: (Map<String, Any>?) -> Unit) {
+        firestore.collection("users").document(currentUserId).get()
+            .addOnSuccessListener { document ->
+                val privacySettings = document.data
+                userPrivacySettings = privacySettings
+                onResult(privacySettings)
+            }
+    }
 
     fun fetchUserNameAndPic(userId: String, onResult: (String, String?) -> Unit) {
         if (userId == "UnknownUser") {
@@ -136,52 +238,119 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
         }
         firestore.collection("users").document(userId).get()
             .addOnSuccessListener { document ->
-                val username = document.getString("username") ?: "User $userId"
-                val profilePic = document.getString("profilePicture")
-                userNames[userId] = username
-                profilePicCache[userId] = profilePic
-                onResult(username, profilePic)
+                if (document.exists()) {
+                    val username = document.getString("username") ?: "Deleted User"
+                    val profilePic = document.getString("profilePicture")
+                    userNames[userId] = username
+                    profilePicCache[userId] = profilePic
+                    onResult(username, profilePic)
+                } else {
+                    userNames[userId] = "Deleted User"
+                    profilePicCache[userId] = null
+                    onResult("Deleted User", null)
+                }
             }
             .addOnFailureListener {
-                onResult("User $userId", null)
+                onResult("Deleted User", null)
             }
     }
 
-    LaunchedEffect(questionDate) {
-        firestore.collection("dailyQuestions")
-            .document(questionDate.toString())
-            .get()
-            .addOnSuccessListener { document ->
-                questionOfTheDay = document.getString("question") ?: "No question available for today."
-            }
+    LaunchedEffect(questionDate, refreshTrigger) {
+        fetchUserPrivacySettings { privacySettings ->
+            userPrivacySettings = privacySettings
 
-        firestore.collection("dailyAnswer")
-            .whereEqualTo("questionDate", questionDate.toString())
-            .addSnapshotListener { snapshot, _ ->
-                snapshot?.let {
-                    answers = it.documents.mapNotNull { doc ->
-                        val data = doc.data
-                        if (data != null) Pair(doc.id, data) else null
-                    }.let { list ->
-                        val (userAnswers, otherAnswers) = list.partition { it.second["userId"] == currentUserId }
+            fetchFriendsListIfNeeded {
+                firestore.collection("dailyQuestions")
+                    .document(questionDate.toString())
+                    .get()
+                    .addOnSuccessListener { document ->
+                        questionOfTheDay = document.getString("question") ?: "No question available for today."
+                    }
 
-                        val sortedOthers = otherAnswers.sortedByDescending {
-                            val timeStr = it.second["timestamp"] as? String
-                            try {
-                                LocalDateTime.parse(timeStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-                            } catch (e: Exception) {
-                                LocalDateTime.MIN
+                firestore.collection("dailyAnswer")
+                    .whereEqualTo("questionDate", questionDate.toString())
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val allAnswers = snapshot.documents.mapNotNull { doc ->
+                            val data = doc.data ?: return@mapNotNull null
+                            val userId = data["userId"] as? String ?: return@mapNotNull null
+                            Triple(doc.id, userId, data)
+                        }
+
+                        val filteredAnswers = mutableListOf<Pair<String, Map<String, Any>>>()
+
+                        val filteredAnswerJobs = allAnswers.map { (docId, userId, data) ->
+                            kotlinx.coroutines.GlobalScope.async {
+                                if (userId.isNullOrBlank()) {
+                                    userPrivacyMap[userId] = "Public"
+                                    return@async
+                                }
+
+                                val privacy = userPrivacyMap[userId] ?: run {
+                                    try {
+                                        val userDoc = firestore.collection("users").document(userId).get().await()
+                                        if (userDoc.exists()) {
+                                            val fetchedPrivacy = userDoc.getString("privacy") ?: "Public"
+                                            userPrivacyMap[userId] = fetchedPrivacy
+                                            fetchedPrivacy
+                                        } else {
+                                            userPrivacyMap[userId] = "Public"
+                                            "Public"
+                                        }
+                                    } catch (e: Exception) {
+                                        userPrivacyMap[userId] = "Public"
+                                        "Public"
+                                    }
+                                }
+
+                                val isFriend = isUserFriendsWithOtherUser(userId)
+                                val isSelf = userId == currentUserId
+
+                                if (privacy == "Public" || (privacy == "Private" && (isFriend || isSelf)) || privacy == "Anonymous") {
+                                    synchronized(filteredAnswers) {
+                                        filteredAnswers.add(docId to data)
+                                    }
+                                }
                             }
                         }
 
-                        userAnswers + sortedOthers
+
+                        kotlinx.coroutines.GlobalScope.launch {
+                            filteredAnswerJobs.awaitAll()
+
+                            val (userAnswers, otherAnswers) = filteredAnswers.partition { it.second["userId"] == currentUserId }
+
+                            val visibleAnswers = when {
+                                userPrivacySettings?.get("onlyShowFriendsAnswers") == true -> {
+                                    userAnswers + otherAnswers.filter { (_, data) ->
+                                        val uid = data["userId"] as? String ?: return@filter false
+                                        isUserFriendsWithOtherUser(uid)
+                                    }
+                                }
+                                else -> userAnswers + otherAnswers
+                            }
+
+                            val sortedAnswers = visibleAnswers.filterNot { it.second["userId"] == currentUserId }
+                                .sortedByDescending {
+                                    val ts = it.second["timestamp"] as? String
+                                    try {
+                                        LocalDateTime.parse(ts, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                                    } catch (e: Exception) {
+                                        LocalDateTime.MIN
+                                    }
+                                }
+
+                            answers = userAnswers + sortedAnswers
+                            val userIdsToFetch = (userAnswers + sortedAnswers).mapNotNull { it.second["userId"] as? String }.distinct()
+                            fetchUserStreaks(userIdsToFetch)
+                        }
                     }
-                }
             }
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("QOTD: $questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
+        Text("$questionOfTheDay", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn {
@@ -198,11 +367,23 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                 var username by remember { mutableStateOf("Loading...") }
                 var profilePicUrl by remember { mutableStateOf<String?>(null) }
 
+
                 LaunchedEffect(answer["userId"]) {
                     fetchUserNameAndPic(answer["userId"] as? String ?: "UnknownUser") { name, pic ->
                         username = name
                         profilePicUrl = pic
                     }
+                }
+
+                val answerUserId = answer["userId"] as? String ?: "UnknownUser"
+                val privacy = userPrivacyMap[answerUserId] ?: "Public"
+                val isFriend = isUserFriendsWithOtherUser(answerUserId)
+                val streak = userStreaks[answerUserId] ?: 0
+                val displayName = if (streak > 0) "$username 🔥$streak" else username
+
+                if (privacy == "Anonymous" && answerUserId != currentUserId && !isFriend) {
+                    username = "Anonymous"
+                    profilePicUrl = null
                 }
 
                 val replyText = when (commentsList.size) {
@@ -249,46 +430,63 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = username,
+                                text = displayName,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                             )
+
+                            // Moved like button to the right side
+                            Spacer(modifier = Modifier.weight(1f))
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center // TODO: this doesn't do shit, not a big deal but bruh
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        likeAnswer(answerId, currentUserId) {
+                                            refreshAnswersTrigger.value += 1
+                                        }
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                        contentDescription = "Like",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Text(
+                                    "${likesList.size}",
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                    fontSize = 15.sp
+                                )
+                            }
                         }
 
                         Text(
                             text = answerText,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 5.dp)
+                            modifier = Modifier.padding(top = 10.dp)
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { likeAnswer(answerId, currentUserId) }) {
-                                Icon(
-                                    imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                                    contentDescription = "Like",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            Text(
-                                "${likesList.size} Likes",
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            Text(
-                                text = replyText,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.clickable { showComments = !showComments }.padding(4.dp),
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
+                        // Replies button moved to left-bottom
+                        Text(
+                            text = replyText,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clickable { showComments = !showComments }
+                                .padding(6.dp),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            fontSize = 15.sp
+                        )
 
                         if (showComments) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Comments:", style = MaterialTheme.typography.bodyLarge)
                             commentsList.forEach { comment ->
                                 val commentUserId = comment["userId"]?.toString() ?: "UnknownUser"
                                 var commentUsername by remember { mutableStateOf("Loading...") }
@@ -298,24 +496,52 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
                                     }
                                 }
                                 val commentText = comment["comment"]?.toString() ?: ""
-                                Text(text = "$commentUsername: $commentText")
+
+                                // Use AnnotatedString to style parts differently
+                                val annotatedText = buildAnnotatedString {
+                                    // Bold username
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                        append("$commentUsername: ")
+                                    }
+                                    // Normal comment text
+                                    append(commentText)
+                                }
+
+                                Text(
+                                    text = annotatedText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 15.sp
+                                )
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             OutlinedTextField(
                                 value = newComment,
                                 onValueChange = { newComment = it },
-                                label = { Text("Add a comment") },
+                                label = { Text("Add a comment...") },
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            Button(
-                                onClick = {
-                                    if (newComment.isNotBlank()) {
-                                        addComment(answerId, newComment)
-                                        newComment = ""
-                                    }
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
                             ) {
-                                Text("Reply")
+                                Button(
+                                    onClick = {
+                                        if (newComment.isNotBlank()) {
+                                            addComment(answerId, newComment) {
+                                                refreshAnswersTrigger.value += 1
+                                            }
+                                            newComment = ""
+                                        }
+                                    },
+                                    modifier = Modifier.padding(top = 8.dp),
+                                ) {
+                                    Text("Reply", color = Color.White, fontSize = 15.sp)
+                                }
                             }
                         }
                     }
@@ -324,14 +550,25 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String) {
 
             if (answers.isEmpty()) {
                 item {
-                    Text(
-                        text = "No answers yet!",
-                        style = MaterialTheme.typography.bodyLarge,
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 32.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                            .fillMaxSize()
+                            .padding(top = 64.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(modifier = Modifier.weight(0.4f))
+                        Text(
+                            text = "No answers",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 24.sp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "☹",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 48.sp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
         }
@@ -353,26 +590,27 @@ fun AnswerBottomNavigationBar() {
             IconButton(onClick = {
                 context.startActivity(Intent(context, MainActivity::class.java))
             }) {
-                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = {
                 context.startActivity(Intent(context, AddFriendActivity::class.java))
             }) {
-                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = { }) {
-                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = Color.White)
             }
             IconButton(onClick = {
-                context.startActivity(Intent(context, SettingsActivity::class.java))
+                val intent = Intent(context, SettingsActivity::class.java)
+                (context as? ComponentActivity)?.startActivityForResult(intent, 100)
             }) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = Color.White)
             }
         }
     }
 }
 
-fun likeAnswer(answerId: String, userId: String) {
+fun likeAnswer(answerId: String, userId: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val answerRef = firestore.collection("dailyAnswer").document(answerId)
     firestore.runTransaction { transaction ->
@@ -380,10 +618,12 @@ fun likeAnswer(answerId: String, userId: String) {
         val likesList = (snapshot.get("likes") as? List<*>)?.mapNotNull { it as? String }?.toMutableList() ?: mutableListOf()
         if (!likesList.contains(userId)) likesList.add(userId) else likesList.remove(userId)
         transaction.update(answerRef, "likes", likesList)
+    }.addOnSuccessListener {
+        onSuccess()
     }
 }
 
-fun addComment(answerId: String, commentText: String) {
+fun addComment(answerId: String, commentText: String, onSuccess: () -> Unit) {
     val firestore = FirebaseFirestore.getInstance()
     val answerRef = firestore.collection("dailyAnswer").document(answerId)
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
@@ -391,4 +631,8 @@ fun addComment(answerId: String, commentText: String) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "UnknownUser"
     val newComment = hashMapOf("userId" to currentUserId, "comment" to commentText, "timestamp" to currentTime)
     answerRef.update("comments", FieldValue.arrayUnion(newComment))
+        .addOnSuccessListener {
+            onSuccess()
+        }
 }
+

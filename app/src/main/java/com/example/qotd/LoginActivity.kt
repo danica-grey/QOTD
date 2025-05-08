@@ -17,6 +17,10 @@ import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
 import java.time.LocalDate
 import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.ColorFilter
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +36,7 @@ class LoginActivity : ComponentActivity() {
         }
     }
 }
+
 
 @Composable
 fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
@@ -103,21 +108,30 @@ fun LoginScreen(modifier: Modifier, activity: LoginActivity) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.quilcircle),
+            contentDescription = "App Icon",
+            modifier = Modifier
+                .size(150.dp)
+                .padding(bottom = 24.dp),
+            contentScale = ContentScale.Fit
+        )
+
         TextField(value = email, onValueChange = { email = it }, label = { Text("Email") })
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         TextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation()
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(onClick = { loginAction() }) {
             Text("Login")
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Button(onClick = {
             auth.createUserWithEmailAndPassword(email, password)

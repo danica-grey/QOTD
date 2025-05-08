@@ -1,5 +1,6 @@
 package com.example.qotd
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -15,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.qotd.ui.theme.QOTDTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -23,7 +23,12 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.tasks.await
 
 class PastQuestionsActivity : ComponentActivity() {
 
@@ -31,8 +36,15 @@ class PastQuestionsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val prefs = getSharedPreferences("qotd_prefs", Context.MODE_PRIVATE)
+        val isDarkMode = prefs.getBoolean("dark_mode", false)
+
         setContent {
-            QOTDTheme {
+            QOTDTheme(darkTheme = isDarkMode) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    SettingsScreen()
+                }
+
                 Scaffold(
                     topBar = {
                         TopAppBar(
@@ -45,16 +57,14 @@ class PastQuestionsActivity : ComponentActivity() {
                             },
                             navigationIcon = {
                                 IconButton(onClick = {
-                                    finish()
+                                    onBackPressed()
                                 }) {
                                     Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Back")
                                 }
                             },
-                            actions = {
-                                SettingsButton()
-                            }
                         )
-                    }
+                    },
+                    bottomBar = { PastBottomNavigationBar() },
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
@@ -70,32 +80,15 @@ class PastQuestionsActivity : ComponentActivity() {
 
     override fun onBackPressed() {
         super.onBackPressed()
-        finish()
     }
 }
 
-@Composable
-fun SettingsButton() {
-    val context = LocalContext.current
-
-    IconButton(onClick = {
-        val intent = Intent(context, SettingsActivity::class.java)
-        context.startActivity(intent)
-    }) {
-        Icon(
-            imageVector = Icons.Filled.Settings,
-            contentDescription = "Settings",
-            modifier = Modifier.size(32.dp)
-        )
-    }
-}
 
 @Composable
 fun PastQuestionsScreen() {
     val firestore = FirebaseFirestore.getInstance()
     var pastQuestions by remember { mutableStateOf<List<PastQuestion>>(emptyList()) }
 
-    // Fetch past questions from Firestore
     LaunchedEffect(Unit) {
         firestore.collection("dailyQuestions")
             .get()
@@ -185,3 +178,40 @@ fun PastQuestionItem(pastQuestion: PastQuestion) {
 }
 
 data class PastQuestion(val date: String, val question: String)
+
+@Composable
+fun PastBottomNavigationBar() {
+    val context = LocalContext.current
+    BottomAppBar(
+        modifier = Modifier.fillMaxWidth().height(88.dp),
+        containerColor = MaterialTheme.colorScheme.primary
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = {
+                context.startActivity(Intent(context, MainActivity::class.java))
+            }) {
+                Icon(Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(32.dp), tint = Color.White)
+            }
+            IconButton(onClick = {
+                context.startActivity(Intent(context, AddFriendActivity::class.java))
+            }) {
+                Icon(Icons.Default.Group, contentDescription = "Friends", modifier = Modifier.size(32.dp), tint = Color.White)
+            }
+            IconButton(onClick = {
+                context.startActivity(Intent(context, UserAnswersActivity::class.java))
+            }) {
+                Icon(Icons.Default.List, contentDescription = "Answers", modifier = Modifier.size(32.dp), tint = Color.White)
+            }
+            IconButton(onClick = {
+                val intent = Intent(context, SettingsActivity::class.java)
+                (context as? ComponentActivity)?.startActivityForResult(intent, 100)
+            }) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings", modifier = Modifier.size(32.dp), tint = Color.White)
+            }
+        }
+    }
+}

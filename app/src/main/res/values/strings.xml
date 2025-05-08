@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">QOTD</string>
+    <string name="app_name">Quil</string>
     <string name="title_activity_splash">SplashActivity</string>
     <string name="title_activity_past_questions">PastQuestionsActivity</string>
     <!-- TODO: Remove or change this placeholder text -->
