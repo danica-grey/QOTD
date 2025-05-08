@@ -43,6 +43,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import coil.compose.AsyncImage
 
 private var refreshAnswersTrigger = mutableStateOf(0)
 
@@ -551,14 +552,25 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
 
             if (answers.isEmpty()) {
                 item {
-                    Text(
-                        text = "No answers yet!",
-                        style = MaterialTheme.typography.bodyLarge,
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 32.dp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                            .fillMaxSize()
+                            .padding(top = 64.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(modifier = Modifier.weight(0.4f))
+                        Text(
+                            text = "No answers",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 24.sp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "☹",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 48.sp),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
         }
