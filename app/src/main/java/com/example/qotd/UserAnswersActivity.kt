@@ -80,9 +80,9 @@ class UserAnswersActivity : ComponentActivity() {
                             },
                             navigationIcon = {
                                 IconButton(onClick = {
-                                    val intent = Intent(context, MainActivity::class.java)
-                                    context.startActivity(intent)
-                                    if (context is ComponentActivity) context.finish()
+                                    if (context is ComponentActivity) {
+                                        context.finish() // Just go back
+                                    }
                                 }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -139,14 +139,12 @@ class UserAnswersActivity : ComponentActivity() {
         val wasNavigatedFromPastQuestions = intent.getBooleanExtra("fromPastQuestions", false)
 
         if (wasNavigatedFromPastQuestions) {
-
             val intent = Intent(this, PastQuestionsActivity::class.java)
             startActivity(intent)
         } else {
             super.onBackPressed()
         }
     }
-
 }
 
 @Composable
@@ -381,7 +379,7 @@ fun UserAnswersScreen(questionDate: LocalDate, displayDate: String, refreshTrigg
                 val privacy = userPrivacyMap[answerUserId] ?: "Public"
                 val isFriend = isUserFriendsWithOtherUser(answerUserId)
                 val streak = userStreaks[answerUserId] ?: 0
-                val displayName = if (streak > 0) "$username 🔥 $streak" else username
+                val displayName = if (streak > 0) "$username 🔥$streak" else username
 
                 if (privacy == "Anonymous" && answerUserId != currentUserId && !isFriend) {
                     username = "Anonymous"
